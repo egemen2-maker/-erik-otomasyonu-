@@ -1,0 +1,6 @@
+{
+  "name": "AutoReel Studio",
+  "description": "AI-powered automated video studio for creating, editing, and packaging viral Instagram Reels and YouTube Shorts content.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
