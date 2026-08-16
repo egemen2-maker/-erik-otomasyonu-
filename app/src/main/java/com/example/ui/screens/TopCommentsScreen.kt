@@ -34,17 +34,23 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.TrendingUp
+import com.example.data.api.SocialApiConfig
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -114,10 +120,14 @@ fun TopCommentsScreen(
     val isAnalyzing by viewModel.isAnalyzingComments.collectAsState()
     val isAutoReplyEnabled by viewModel.isAiAutoReplyEnabled.collectAsState()
     val activeTone by viewModel.activeReplyTone.collectAsState()
+    val socialConfig by viewModel.socialConfig.collectAsState()
+    val apiStatusMessage by viewModel.apiStatusMessage.collectAsState()
+    val isLiveApiLoading by viewModel.isLiveApiLoading.collectAsState()
 
     var selectedPlatformFilter by remember { mutableStateOf("Tümü") }
     var selectedSentimentFilter by remember { mutableStateOf<CommentSentiment?>(null) }
     var showAddCommentDialog by remember { mutableStateOf(false) }
+    var showApiConnectDialog by remember { mutableStateOf(false) }
 
     val filteredComments = commentsList.filter { comment ->
         val matchPlatform = when (selectedPlatformFilter) {
@@ -415,6 +425,168 @@ fun TopCommentsScreen(
                         }
                     }
 
+                    // Live Social API Connection Status Card
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = StudioSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CloudSync,
+                                        contentDescription = null,
+                                        tint = StudioPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "Gerçek Hesap & Canlı API",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = { showApiConnectDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, StudioPrimary),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Key,
+                                        contentDescription = null,
+                                        tint = StudioPrimary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "API & Hesap Bağla",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StudioPrimary
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // YouTube status chip
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (socialConfig.isYouTubeConnected) YouTubeRed.copy(alpha = 0.15f) else StudioSurface,
+                                    border = BorderStroke(0.5.dp, if (socialConfig.isYouTubeConnected) YouTubeRed else StudioBorder),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(if (socialConfig.isYouTubeConnected) SuccessGreen else Color.Gray)
+                                        )
+                                        Text(
+                                            text = if (socialConfig.isYouTubeConnected) "YouTube: Canlı" else "YouTube: Pasif",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextPrimary,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+
+                                // Instagram status chip
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (socialConfig.isInstagramConnected) InstagramPink.copy(alpha = 0.15f) else StudioSurface,
+                                    border = BorderStroke(0.5.dp, if (socialConfig.isInstagramConnected) InstagramPink else StudioBorder),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(if (socialConfig.isInstagramConnected) SuccessGreen else Color.Gray)
+                                        )
+                                        Text(
+                                            text = if (socialConfig.isInstagramConnected) "Instagram: Canlı" else "Instagram: Pasif",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextPrimary,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // API Status Feedback Banner
+                    if (!apiStatusMessage.isNullOrBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = StudioPrimaryDark,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                if (isLiveApiLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(
+                                    text = apiStatusMessage ?: "",
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = { viewModel.clearStatusMessage() },
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Kapat",
+                                        tint = Color.White.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Quick Action Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -614,15 +786,35 @@ fun TopCommentsScreen(
                         viewModel.generateNewAiReplyForComment(comment.id, activeTone)
                     },
                     onSendReply = { replyText, isAi ->
-                        viewModel.sendReply(comment.id, replyText, isAi)
+                        viewModel.executeLiveOrSimulatedReply(comment, replyText, isAi)
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("Yanıt", replyText)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Yanıt kaydedildi ve panoya kopyalandı! ✅", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Yanıt işlendi ve panoya kopyalandı! ✅", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
         }
+    }
+
+    // Live API & Account Connection Dialog
+    if (showApiConnectDialog) {
+        ApiConnectionDialog(
+            currentConfig = socialConfig,
+            isLoading = isLiveApiLoading,
+            onDismiss = { showApiConnectDialog = false },
+            onFetchYouTube = { apiKey, videoId ->
+                viewModel.fetchLiveYouTubeComments(apiKey, videoId)
+            },
+            onFetchInstagram = { token, mediaId ->
+                viewModel.fetchLiveInstagramComments(token, mediaId)
+            },
+            onSaveConfig = { updatedConfig ->
+                viewModel.updateSocialConfig(updatedConfig)
+                showApiConnectDialog = false
+                Toast.makeText(context, "API Ayarları Kaydedildi!", Toast.LENGTH_SHORT).show()
+            }
+        )
     }
 
     // Add Simulated Comment Dialog
@@ -1133,3 +1325,240 @@ fun AddCommentDialog(
         }
     )
 }
+
+@Composable
+fun ApiConnectionDialog(
+    currentConfig: SocialApiConfig,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onFetchYouTube: (apiKey: String, videoInput: String) -> Unit,
+    onFetchInstagram: (accessToken: String, mediaInput: String) -> Unit,
+    onSaveConfig: (SocialApiConfig) -> Unit
+) {
+    var ytApiKey by remember { mutableStateOf(currentConfig.youtubeApiKey) }
+    var ytVideoInput by remember { mutableStateOf(currentConfig.youtubeVideoIdOrUrl) }
+    var ytOAuthToken by remember { mutableStateOf(currentConfig.youtubeOAuthToken) }
+
+    var igAccessToken by remember { mutableStateOf(currentConfig.instagramAccessToken) }
+    var igMediaInput by remember { mutableStateOf(currentConfig.instagramMediaIdOrUrl) }
+
+    var selectedTab by remember { mutableStateOf(0) } // 0: YouTube, 1: Instagram
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Key,
+                    contentDescription = null,
+                    tint = StudioPrimary
+                )
+                Text(
+                    text = "Gerçek Hesap & Canlı API Bağlantısı",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(
+                        text = "YouTube Data API v3 ve Instagram Graph API ile gerçek kanalınızdan/hesabınızdan canlı izleyici yorumlarını çekin ve AI ile otomatik yanıtlayın.",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        lineHeight = 16.sp
+                    )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selectedTab == 0) YouTubeRed.copy(alpha = 0.15f) else StudioSurfaceVariant,
+                            border = BorderStroke(1.dp, if (selectedTab == 0) YouTubeRed else StudioBorder),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedTab = 0 }
+                        ) {
+                            Text(
+                                text = "YouTube Data API",
+                                color = if (selectedTab == 0) YouTubeRed else TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selectedTab == 1) InstagramPink.copy(alpha = 0.15f) else StudioSurfaceVariant,
+                            border = BorderStroke(1.dp, if (selectedTab == 1) InstagramPink else StudioBorder),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedTab = 1 }
+                        ) {
+                            Text(
+                                text = "Instagram Graph API",
+                                color = if (selectedTab == 1) InstagramPink else TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                if (selectedTab == 0) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = ytApiKey,
+                                onValueChange = { ytApiKey = it },
+                                label = { Text("Google Cloud YouTube API Key") },
+                                placeholder = { Text("AIzaSy...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = ytVideoInput,
+                                onValueChange = { ytVideoInput = it },
+                                label = { Text("YouTube Video / Shorts Linki veya ID") },
+                                placeholder = { Text("https://youtu.be/... veya dQw4w9WgXcQ") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = ytOAuthToken,
+                                onValueChange = { ytOAuthToken = it },
+                                label = { Text("Google OAuth Token (Canlı Yanıtlama için - İsteğe Bağlı)") },
+                                placeholder = { Text("ya29.a0...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            Button(
+                                onClick = { onFetchYouTube(ytApiKey, ytVideoInput) },
+                                enabled = !isLoading && ytApiKey.isNotBlank() && ytVideoInput.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = YouTubeRed),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("YouTube'dan Çekiliyor...")
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Refresh,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("▶️ YouTube Yorumlarını Canlı Çek")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = igAccessToken,
+                                onValueChange = { igAccessToken = it },
+                                label = { Text("Meta Graph API Access Token") },
+                                placeholder = { Text("EAA...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = igMediaInput,
+                                onValueChange = { igMediaInput = it },
+                                label = { Text("Instagram Reels / Post Linki veya ID") },
+                                placeholder = { Text("https://instagram.com/reel/C_... veya 1802...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            Button(
+                                onClick = { onFetchInstagram(igAccessToken, igMediaInput) },
+                                enabled = !isLoading && igAccessToken.isNotBlank() && igMediaInput.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = InstagramPink),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Instagram'dan Çekiliyor...")
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Refresh,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("📸 Instagram Reels Yorumlarını Canlı Çek")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSaveConfig(
+                        currentConfig.copy(
+                            youtubeApiKey = ytApiKey,
+                            youtubeVideoIdOrUrl = ytVideoInput,
+                            youtubeOAuthToken = ytOAuthToken,
+                            instagramAccessToken = igAccessToken,
+                            instagramMediaIdOrUrl = igMediaInput
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = StudioPrimary)
+            ) {
+                Text("Ayarları Kaydet")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Kapat")
+            }
+        }
+    )
+}
+

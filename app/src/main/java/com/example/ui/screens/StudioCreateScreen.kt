@@ -377,62 +377,207 @@ fun StudioCreateScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "3. Hedef Platform & Format",
+                    text = "3. Hedef Platform Seçimi (Nereye Üretilsin?)",
                     color = TextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PlatformTarget.values().forEach { platform ->
-                        val isSelected = selectedPlatform == platform
-                        val badgeColor = when (platform) {
-                            PlatformTarget.ALL_IN_ONE -> StudioPrimary
-                            PlatformTarget.INSTAGRAM_REELS -> InstagramPink
-                            PlatformTarget.YOUTUBE_SHORTS, PlatformTarget.YOUTUBE_LONG -> YouTubeRed
-                        }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Row 1: Her İkisi Birden (Featured Primary)
+                    val isAllInOne = selectedPlatform == PlatformTarget.ALL_IN_ONE
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedPlatform = PlatformTarget.ALL_IN_ONE }
+                            .border(
+                                width = if (isAllInOne) 2.dp else 1.dp,
+                                color = if (isAllInOne) StudioPrimary else StudioBorder,
+                                shape = RoundedCornerShape(16.dp)
+                            ),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isAllInOne) StudioPrimary.copy(alpha = 0.08f) else StudioSurface
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = StudioPrimary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.RocketLaunch,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .size(20.dp)
+                                )
+                            }
 
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "Her İkisi Birden (Instagram + YouTube)",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = TextPrimary
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = StudioPrimary.copy(alpha = 0.2f)
+                                    ) {
+                                        Text(
+                                            text = "ÖNERİLEN",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = StudioPrimary,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Hem Instagram Reels hem YouTube Shorts için tek tıkla eşzamanlı SEO ve video paketi üretir.",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                            }
+
+                            if (isAllInOne) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = StudioPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Row 2: Sadece Instagram & Sadece YouTube Split
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Sadece Instagram
+                        val isIg = selectedPlatform == PlatformTarget.INSTAGRAM_REELS
                         Card(
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { selectedPlatform = platform }
+                                .clickable { selectedPlatform = PlatformTarget.INSTAGRAM_REELS }
                                 .border(
-                                    width = if (isSelected) 1.5.dp else 0.5.dp,
-                                    color = if (isSelected) badgeColor else StudioBorder,
-                                    shape = RoundedCornerShape(14.dp)
+                                    width = if (isIg) 2.dp else 1.dp,
+                                    color = if (isIg) InstagramPink else StudioBorder,
+                                    shape = RoundedCornerShape(16.dp)
                                 ),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) StudioSurfaceElevated else StudioSurface
+                                containerColor = if (isIg) InstagramPink.copy(alpha = 0.08f) else StudioSurface
                             )
                         ) {
                             Column(
-                                modifier = Modifier.padding(10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = badgeColor.copy(alpha = 0.2f)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = platform.badge,
-                                        color = badgeColor,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    Icon(
+                                        imageVector = Icons.Filled.CameraAlt,
+                                        contentDescription = "Instagram",
+                                        tint = InstagramPink,
+                                        modifier = Modifier.size(22.dp)
                                     )
+                                    if (isIg) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = InstagramPink,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                                 Text(
-                                    text = platform.title,
-                                    color = if (isSelected) TextPrimary else TextSecondary,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 2
+                                    text = "Sadece Instagram",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Reels 9:16, trend sesler & bio link yönlendirmesi",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary,
+                                    lineHeight = 13.sp
+                                )
+                            }
+                        }
+
+                        // Sadece YouTube Shorts
+                        val isYt = selectedPlatform == PlatformTarget.YOUTUBE_SHORTS
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedPlatform = PlatformTarget.YOUTUBE_SHORTS }
+                                .border(
+                                    width = if (isYt) 2.dp else 1.dp,
+                                    color = if (isYt) YouTubeRed else StudioBorder,
+                                    shape = RoundedCornerShape(16.dp)
+                                ),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isYt) YouTubeRed.copy(alpha = 0.08f) else StudioSurface
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.PlayCircle,
+                                        contentDescription = "YouTube",
+                                        tint = YouTubeRed,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    if (isYt) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = YouTubeRed,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Sadece YouTube",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Shorts 9:16, yüksek CTR başlıklar & SEO etiketleri",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary,
+                                    lineHeight = 13.sp
                                 )
                             }
                         }

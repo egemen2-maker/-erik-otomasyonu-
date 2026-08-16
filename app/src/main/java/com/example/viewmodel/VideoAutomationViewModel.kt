@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.TextToSpeechHelper
 import com.example.data.ai.GeminiAutomationService
+import com.example.data.api.ApiResult
+import com.example.data.api.SocialApiConfig
+import com.example.data.api.SocialMediaApiService
 import com.example.data.local.AppDatabase
 import com.example.data.local.ProjectRepository
 import com.example.model.CaptionStyle
@@ -34,6 +37,17 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
     private val repository = ProjectRepository(AppDatabase.getInstance(application).projectDao())
     private val aiService = GeminiAutomationService()
     private val ttsHelper = TextToSpeechHelper(application)
+    private val socialApiService = SocialMediaApiService()
+
+    // Live API & Credentials Configuration
+    private val _socialConfig = MutableStateFlow(SocialApiConfig())
+    val socialConfig: StateFlow<SocialApiConfig> = _socialConfig.asStateFlow()
+
+    private val _apiStatusMessage = MutableStateFlow<String?>(null)
+    val apiStatusMessage: StateFlow<String?> = _apiStatusMessage.asStateFlow()
+
+    private val _isLiveApiLoading = MutableStateFlow(false)
+    val isLiveApiLoading: StateFlow<Boolean> = _isLiveApiLoading.asStateFlow()
 
     val savedProjects: StateFlow<List<VideoProject>> = repository.allProjects
         .stateIn(
@@ -517,6 +531,104 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
                 likesCount = 1
             )
             _commentsList.value = listOf(newComment) + _commentsList.value
+        }
+    }
+
+    fun updateSocialConfig(config: SocialApiConfig) {
+        _socialConfig.value = config
+    }
+
+    fun clearStatusMessage() {
+        _apiStatusMessage.value = null
+    }
+
+    fun fetchLiveYouTubeComments(apiKey: String, videoInput: String) {
+        viewModelScope.launch {
+            _isLiveApiLoading.value = true
+            _apiStatusMessage.value = "YouTube Data API v3 üzerinden canlı izleyici yorumları çekiliyor..."
+            val result = socialApiService.fetchLiveYouTubeComments(apiKey, videoInput)
+            when (result) {
+                is ApiResult.Success -> {
+                    if (result.data.isNotEmpty()) {
+                        _commentsList.value = result.data + _commentsList.value.filter { it.platform != "YouTube" }
+                        _socialConfig.value = _socialConfig.value.copy(
+                            youtubeApiKey = apiKey,
+                            youtubeVideoIdOrUrl = videoInput,
+                            isYouTubeConnected = true
+                        )
+                        _apiStatusMessage.value = "✅ ${result.message}"
+                    } else {
+                        _apiStatusMessage.value = "ℹ️ ${result.message}"
+                    }
+                }
+                is ApiResult.Error -> {
+                    _apiStatusMessage.value = "❌ YouTube Hatası: ${result.errorMessage}"
+                }
+            }
+            _isLiveApiLoading.value = false
+        }
+    }
+
+    fun fetchLiveInstagramComments(accessToken: String, mediaInput: String) {
+        viewModelScope.launch {
+            _isLiveApiLoading.value = true
+            _apiStatusMessage.value = "Meta Graph API üzerinden Instagram Reels yorumları çekiliyor..."
+            val result = socialApiService.fetchLiveInstagramComments(accessToken, mediaInput)
+            when (result) {
+                is ApiResult.Success -> {
+                    if (result.data.isNotEmpty()) {
+                        _commentsList.value = result.data + _commentsList.value.filter { it.platform != "Instagram" }
+                        _socialConfig.value = _socialConfig.value.copy(
+                            instagramAccessToken = accessToken,
+                            instagramMediaIdOrUrl = mediaInput,
+                            isInstagramConnected = true
+                        )
+                        _apiStatusMessage.value = "✅ ${result.message}"
+                    } else {
+                        _apiStatusMessage.value = "ℹ️ ${result.message}"
+                    }
+                }
+                is ApiResult.Error -> {
+                    _apiStatusMessage.value = "❌ Instagram Hatası: ${result.errorMessage}"
+                }
+            }
+            _isLiveApiLoading.value = false
+        }
+    }
+
+    fun executeLiveOrSimulatedReply(comment: CommentItem, replyText: String, isAiGenerated: Boolean) {
+        viewModelScope.launch {
+            val cfg = _socialConfig.value
+            if (comment.platform == "YouTube" && cfg.youtubeOAuthToken.isNotBlank()) {
+                _apiStatusMessage.value = "YouTube'a canlı yanıt gönderiliyor..."
+                val res = socialApiService.postLiveYouTubeReply(cfg.youtubeOAuthToken, comment.id, replyText)
+                when (res) {
+                    is ApiResult.Success -> {
+                        sendReply(comment.id, replyText, isAiGenerated)
+                        _apiStatusMessage.value = res.message
+                    }
+                    is ApiResult.Error -> {
+                        _apiStatusMessage.value = "❌ ${res.errorMessage}"
+                        sendReply(comment.id, replyText, isAiGenerated)
+                    }
+                }
+            } else if (comment.platform == "Instagram" && cfg.instagramAccessToken.isNotBlank()) {
+                _apiStatusMessage.value = "Instagram'a canlı yanıt gönderiliyor..."
+                val res = socialApiService.postLiveInstagramReply(cfg.instagramAccessToken, comment.id, replyText)
+                when (res) {
+                    is ApiResult.Success -> {
+                        sendReply(comment.id, replyText, isAiGenerated)
+                        _apiStatusMessage.value = res.message
+                    }
+                    is ApiResult.Error -> {
+                        _apiStatusMessage.value = "❌ ${res.errorMessage}"
+                        sendReply(comment.id, replyText, isAiGenerated)
+                    }
+                }
+            } else {
+                // Standard local save & ready to copy
+                sendReply(comment.id, replyText, isAiGenerated)
+            }
         }
     }
 
