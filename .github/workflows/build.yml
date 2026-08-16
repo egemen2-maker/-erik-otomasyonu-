@@ -11,6 +11,7 @@ jobs:
   build:
     name: Build & Package APK
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Repository
@@ -22,31 +23,36 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Android SDK Environment
+      - name: Install Android SDK & Platforms
         run: |
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+
+      - name: Install Official Gradle 9.3.1
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+          unzip -q gradle-9.3.1-bin.zip
+          echo "$GITHUB_WORKSPACE/gradle-9.3.1/bin" >> $GITHUB_PATH
+
+      - name: Prepare Secrets and Keys
+        run: |
+          touch .env
+          echo "GEMINI_API_KEY=dummy_ci_token" >> .env
+          echo "MAPS_API_KEY=dummy_ci_token" >> .env
           echo "sdk.dir=${ANDROID_HOME}" > local.properties
           echo "android.builder.sdkDownload=true" >> gradle.properties
           echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> gradle.properties
 
-      - name: Prepare Secrets and Signing Key
-        run: |
-          # 1. Prepare .env for Secrets Gradle Plugin
-          touch .env
-          echo "GEMINI_API_KEY=dummy_ci_token" >> .env
-          echo "MAPS_API_KEY=dummy_ci_token" >> .env
-
-          # 2. Restore debug keystore
+          # Setup debug keystore
           if [ -f "debug.keystore.base64" ]; then
             base64 -d debug.keystore.base64 > debug.keystore
           else
             keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-      - name: Make Gradlew Executable
-        run: chmod +x ./gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew :app:assembleDebug -x test --no-daemon --stacktrace
+      - name: Build Debug APK with Gradle 9.3.1
+        run: |
+          $GITHUB_WORKSPACE/gradle-9.3.1/bin/gradle :app:assembleDebug -x test --no-daemon --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
