@@ -1,6 +1,7 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.TextToSpeechHelper
@@ -12,6 +13,7 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.ProjectRepository
 import com.example.model.CaptionStyle
 import com.example.model.CommentItem
+import com.example.model.HookType
 import com.example.model.PlatformTarget
 import com.example.model.ProjectStatus
 import com.example.model.ReplyTone
@@ -39,8 +41,10 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
     private val ttsHelper = TextToSpeechHelper(application)
     private val socialApiService = SocialMediaApiService()
 
+    private val sharedPrefs = application.getSharedPreferences("autoreel_api_prefs", Context.MODE_PRIVATE)
+
     // Live API & Credentials Configuration
-    private val _socialConfig = MutableStateFlow(SocialApiConfig())
+    private val _socialConfig = MutableStateFlow(loadSavedSocialConfig())
     val socialConfig: StateFlow<SocialApiConfig> = _socialConfig.asStateFlow()
 
     private val _apiStatusMessage = MutableStateFlow<String?>(null)
@@ -82,7 +86,6 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
     val activeReplyTone: StateFlow<ReplyTone> = _activeReplyTone.asStateFlow()
 
     // Playback state
-
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
@@ -106,6 +109,32 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    private fun loadSavedSocialConfig(): SocialApiConfig {
+        return SocialApiConfig(
+            geminiApiKey = sharedPrefs.getString("gemini_api_key", "") ?: "",
+            youtubeApiKey = sharedPrefs.getString("yt_api_key", "") ?: "",
+            youtubeVideoIdOrUrl = sharedPrefs.getString("yt_video_url", "") ?: "",
+            youtubeOAuthToken = sharedPrefs.getString("yt_oauth_token", "") ?: "",
+            instagramAccessToken = sharedPrefs.getString("ig_access_token", "") ?: "",
+            instagramMediaIdOrUrl = sharedPrefs.getString("ig_media_url", "") ?: "",
+            isYouTubeConnected = sharedPrefs.getBoolean("yt_connected", false),
+            isInstagramConnected = sharedPrefs.getBoolean("ig_connected", false)
+        )
+    }
+
+    private fun saveSocialConfigToPrefs(cfg: SocialApiConfig) {
+        sharedPrefs.edit()
+            .putString("gemini_api_key", cfg.geminiApiKey)
+            .putString("yt_api_key", cfg.youtubeApiKey)
+            .putString("yt_video_url", cfg.youtubeVideoIdOrUrl)
+            .putString("yt_oauth_token", cfg.youtubeOAuthToken)
+            .putString("ig_access_token", cfg.instagramAccessToken)
+            .putString("ig_media_url", cfg.instagramMediaIdOrUrl)
+            .putBoolean("yt_connected", cfg.isYouTubeConnected)
+            .putBoolean("ig_connected", cfg.isInstagramConnected)
+            .apply()
+    }
+
     private suspend fun loadStarterProject() {
         val starter = aiService.generateProFallbackProject(
             topic = "Günde 1 Saat Yapay Zeka ile Pasif Gelir",
@@ -119,7 +148,7 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
 
     fun loadSuggestedIdeas(niche: VideoNiche) {
         viewModelScope.launch {
-            _suggestedIdeas.value = aiService.suggestTrendingTopics(niche)
+            _suggestedIdeas.value = aiService.suggestTrendingTopics(niche, _socialConfig.value.geminiApiKey)
         }
     }
 
@@ -134,6 +163,7 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
             stopPlayback()
             _isGenerating.value = true
             _generationStage.value = "Kurgu ve Otomasyon Başlatılıyor..."
+            val customKey = _socialConfig.value.geminiApiKey
             try {
                 val generated = aiService.generateCompleteVideoAutomation(
                     topic = topic,
@@ -141,6 +171,7 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
                     platformTarget = platformTarget,
                     tone = tone,
                     durationSeconds = durationSeconds,
+                    customApiKey = customKey,
                     onStageUpdate = { stage ->
                         _generationStage.value = stage
                     }
@@ -212,6 +243,57 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
     fun updateAspectRatio(aspect: VideoAspectRatio) {
         val current = _activeProject.value ?: return
         val updated = current.copy(aspectRatio = aspect)
+        _activeProject.value = updated
+        saveProjectAsync(updated)
+    }
+
+    fun switchHookType(hookType: HookType) {
+        val current = _activeProject.value ?: return
+        val newHookText = if (hookType == HookType.HOOK_B && current.splitHooks.hookB.isNotBlank()) {
+            current.splitHooks.hookB
+        } else {
+            current.splitHooks.hookA
+        }
+        val scenes = current.script.scenes.toMutableList()
+        if (scenes.isNotEmpty()) {
+            val first = scenes[0]
+            val rest = if (first.narrationText.contains(".")) {
+                first.narrationText.substringAfter(".", "")
+            } else ""
+            scenes[0] = first.copy(
+                narrationText = if (rest.isNotBlank()) "$newHookText. $rest" else newHookText,
+                onScreenSubtitle = newHookText.take(38)
+            )
+        }
+        val updated = current.copy(
+            script = current.script.copy(
+                hookLine = newHookText,
+                scenes = scenes
+            ),
+            splitHooks = current.splitHooks.copy(selectedHookType = hookType)
+        )
+        _activeProject.value = updated
+        saveProjectAsync(updated)
+    }
+
+    fun toggleBouncingEmojis() {
+        val current = _activeProject.value ?: return
+        val updated = current.copy(
+            styleSettings = current.styleSettings.copy(
+                bouncingEmojisEnabled = !current.styleSettings.bouncingEmojisEnabled
+            )
+        )
+        _activeProject.value = updated
+        saveProjectAsync(updated)
+    }
+
+    fun toggleHumanizedBreathing() {
+        val current = _activeProject.value ?: return
+        val updated = current.copy(
+            styleSettings = current.styleSettings.copy(
+                humanizedBreathing = !current.styleSettings.humanizedBreathing
+            )
+        )
         _activeProject.value = updated
         saveProjectAsync(updated)
     }
@@ -298,10 +380,11 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
                 val duration = scene.durationSeconds.coerceAtLeast(2.0f)
                 val durationMillis = (duration * 1000).toLong()
 
-                // Speak scene text via TTS
+                // Speak scene text via TTS with humanized breathing
                 ttsHelper.speak(
                     text = scene.narrationText,
-                    speechRate = project.styleSettings.voiceSpeed
+                    speechRate = project.styleSettings.voiceSpeed,
+                    humanizedBreathing = project.styleSettings.humanizedBreathing
                 )
 
                 // Animate progress for the scene
@@ -401,7 +484,23 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
             _isAnalyzingComments.value = true
             val title = customTitle ?: _activeProject.value?.topic ?: "Günde 1 Saat Yapay Zeka ile Pasif Gelir"
             val niche = customNiche ?: _activeProject.value?.niche ?: VideoNiche.TECH_AI
-            val comments = aiService.generateTopComments(title, niche)
+            val cfg = _socialConfig.value
+
+            // If user has connected live YouTube with a video url/id, fetch live real comments first!
+            if (cfg.youtubeVideoIdOrUrl.isNotBlank()) {
+                val liveResult = socialApiService.fetchLiveYouTubeComments(cfg.youtubeApiKey, cfg.youtubeVideoIdOrUrl)
+                if (liveResult is ApiResult.Success && liveResult.data.isNotEmpty()) {
+                    _commentsList.value = liveResult.data
+                    _isAnalyzingComments.value = false
+                    if (_isAiAutoReplyEnabled.value) {
+                        autoReplyAllPendingWithAi()
+                    }
+                    return@launch
+                }
+            }
+
+            // Otherwise, generate realistic, dynamic context-aware comments for this specific video
+            val comments = aiService.generateTopComments(title, niche, cfg.geminiApiKey)
             _commentsList.value = comments
             _isAnalyzingComments.value = false
 
@@ -450,7 +549,12 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch {
             val target = _commentsList.value.find { it.id == commentId } ?: return@launch
             val videoTitle = _activeProject.value?.topic ?: target.videoTitle
-            val generatedReply = aiService.generateAiReply(target.commentText, videoTitle, tone)
+            val generatedReply = aiService.generateAiReply(
+                commentText = target.commentText,
+                videoTitle = videoTitle,
+                tone = tone,
+                customApiKey = _socialConfig.value.geminiApiKey
+            )
 
             _commentsList.value = _commentsList.value.map { item ->
                 if (item.id == commentId) {
@@ -511,7 +615,7 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
     ) {
         viewModelScope.launch {
             val videoTitle = _activeProject.value?.topic ?: "Otomasyon Videosu"
-            val aiReply = aiService.generateAiReply(commentText, videoTitle, _activeReplyTone.value)
+            val aiReply = aiService.generateAiReply(commentText, videoTitle, _activeReplyTone.value, _socialConfig.value.geminiApiKey)
             val newComment = CommentItem(
                 id = java.util.UUID.randomUUID().toString(),
                 authorName = authorName,
@@ -536,6 +640,37 @@ class VideoAutomationViewModel(application: Application) : AndroidViewModel(appl
 
     fun updateSocialConfig(config: SocialApiConfig) {
         _socialConfig.value = config
+        saveSocialConfigToPrefs(config)
+    }
+
+    fun fetchLiveCommentsFromAnyUrl(urlOrTopic: String) {
+        viewModelScope.launch {
+            _isLiveApiLoading.value = true
+            _apiStatusMessage.value = "Gerçek video ve canlı izleyici yorumları yükleniyor..."
+            val cfg = _socialConfig.value
+            if (urlOrTopic.contains("instagram.com") || cfg.instagramAccessToken.isNotBlank()) {
+                when (val res = socialApiService.fetchLiveInstagramComments(cfg.instagramAccessToken, urlOrTopic)) {
+                    is ApiResult.Success -> {
+                        _commentsList.value = res.data
+                        _apiStatusMessage.value = "✅ ${res.message}"
+                    }
+                    is ApiResult.Error -> {
+                        _apiStatusMessage.value = "ℹ️ ${res.errorMessage}"
+                    }
+                }
+            } else {
+                when (val res = socialApiService.fetchLiveYouTubeComments(cfg.youtubeApiKey, urlOrTopic)) {
+                    is ApiResult.Success -> {
+                        _commentsList.value = res.data
+                        _apiStatusMessage.value = "✅ ${res.message}"
+                    }
+                    is ApiResult.Error -> {
+                        _apiStatusMessage.value = "ℹ️ ${res.errorMessage}"
+                    }
+                }
+            }
+            _isLiveApiLoading.value = false
+        }
     }
 
     fun clearStatusMessage() {

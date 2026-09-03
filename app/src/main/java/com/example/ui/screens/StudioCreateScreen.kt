@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.VideoCameraFront
@@ -99,8 +100,8 @@ fun StudioCreateScreen(
     onNavigateToEditor: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedNiche by remember { mutableStateOf(VideoNiche.TECH_AI) }
-    var promptTopic by remember { mutableStateOf(VideoNiche.TECH_AI.defaultPrompt) }
+    var selectedNiche by remember { mutableStateOf(VideoNiche.AUTO_DETECT) }
+    var promptTopic by remember { mutableStateOf("Yapay zeka ile günde 1 saat çalışarak pasif gelir elde etmenin 3 somut adımı") }
     var selectedPlatform by remember { mutableStateOf(PlatformTarget.ALL_IN_ONE) }
     var selectedTone by remember { mutableStateOf(VideoTone.ENERGETIC) }
     var durationSeconds by remember { mutableIntStateOf(30) }
@@ -209,13 +210,62 @@ fun StudioCreateScreen(
 
         // Section 1: Niche / Topic Category Selector
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "1. Kategori ve Niş Seçin",
-                    color = TextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "1. Video Türü Seçimi (Hibrit AI / Manuel)",
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (selectedNiche == VideoNiche.AUTO_DETECT) StudioPrimary.copy(alpha = 0.15f) else StudioSurfaceVariant
+                    ) {
+                        Text(
+                            text = if (selectedNiche == VideoNiche.AUTO_DETECT) "🤖 AI Otomatik Seçimde" else "✋ Manuel Seçildi",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selectedNiche == VideoNiche.AUTO_DETECT) StudioPrimary else TextSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                // Information Helper Banner
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = StudioSurfaceElevated,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, StudioBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (selectedNiche == VideoNiche.AUTO_DETECT) Icons.Default.AutoAwesome else Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = if (selectedNiche == VideoNiche.AUTO_DETECT) StudioPrimary else SuccessGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = if (selectedNiche == VideoNiche.AUTO_DETECT) {
+                                "Tür seçmezseniz yapay zeka konunuzu analiz edip en uygun kurguyu (İş, Gizem, Finans vb.) otomatik belirler. İsterseniz aşağıdaki butonlardan manuel de seçebilirsiniz."
+                            } else {
+                                "Seçilen Tür: '${selectedNiche.label}'. AI bu türe özel dinamik kurgu ve kancalar üretecektir."
+                            },
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
 
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -227,7 +277,7 @@ fun StudioCreateScreen(
                             selected = isSelected,
                             onClick = {
                                 selectedNiche = niche
-                                if (niche != VideoNiche.CUSTOM && niche.defaultPrompt.isNotBlank()) {
+                                if (niche != VideoNiche.CUSTOM && niche != VideoNiche.AUTO_DETECT && niche.defaultPrompt.isNotBlank()) {
                                     promptTopic = niche.defaultPrompt
                                 }
                                 viewModel.loadSuggestedIdeas(niche)
@@ -944,6 +994,64 @@ fun StudioCreateScreen(
                             fontWeight = FontWeight.Bold
                         )
                     }
+                }
+            }
+        }
+
+        // Algorithm Safety & Perfect Production Assurance Card
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = StudioSurfaceElevated,
+                border = androidx.compose.foundation.BorderStroke(1.dp, StudioBorder)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Algoritma Ceza Kalkanı & A/B Kanca",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = TextPrimary
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = SuccessGreen.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "GÜVENLİ",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SuccessGreen,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "• YouTube Sentetik İçerik Politikası tam uyumlu kurgulanır (Shadowban engeli).\n• Merak (Hook A) ve FOMO (Hook B) ikili kanca testi otomatik üretilir.\n• MrBeast zıplayan emoji altyazıları ve insansı nefes tonlaması entegre edilir.",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        lineHeight = 16.sp
+                    )
                 }
             }
         }

@@ -45,6 +45,7 @@ class TextToSpeechHelper(private val context: Context) {
     fun speak(
         text: String,
         speechRate: Float = 1.05f,
+        humanizedBreathing: Boolean = true,
         onStart: (() -> Unit)? = null,
         onDone: (() -> Unit)? = null
     ) {
@@ -54,8 +55,32 @@ class TextToSpeechHelper(private val context: Context) {
         }
         onSpeechStartCallback = onStart
         onSpeechDoneCallback = onDone
+
+        val processedText = if (humanizedBreathing) {
+            humanizeSpeechText(text)
+        } else {
+            text
+        }
+
+        // Slight tonal warmth for humanized feel
+        tts?.setPitch(if (humanizedBreathing) 1.02f else 1.0f)
         tts?.setSpeechRate(speechRate)
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "UTTERANCE_${System.currentTimeMillis()}")
+        tts?.speak(processedText, TextToSpeech.QUEUE_FLUSH, null, "UTTERANCE_${System.currentTimeMillis()}")
+    }
+
+    private fun humanizeSpeechText(raw: String): String {
+        return raw
+            .replace("!", "! ... ")
+            .replace("?", "? ... ")
+            .replace(":", ": ... ")
+            .replace(" - ", " ... ")
+            .replace(";", "; ... ")
+            .replace("1.", "Birinci, ... ")
+            .replace("2.", "İkinci, ... ")
+            .replace("3.", "Üçüncü, ... ")
+            .replace("4.", "Dördüncü, ... ")
+            .replace("5.", "Beşinci, ... ")
+            .trim()
     }
 
     fun stop() {

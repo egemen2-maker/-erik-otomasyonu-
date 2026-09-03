@@ -344,7 +344,8 @@ fun VideoPlayerCanvas(
                         highlightWords = scene.textHighlightWords,
                         progress = currentSceneProgress,
                         style = project.styleSettings.captionStyle,
-                        fontSizeSp = project.styleSettings.fontSizeSp
+                        fontSizeSp = project.styleSettings.fontSizeSp,
+                        bouncingEmojisEnabled = project.styleSettings.bouncingEmojisEnabled
                     )
                 }
             }
@@ -418,10 +419,23 @@ fun KaraokeSubtitleBox(
     highlightWords: List<String>,
     progress: Float,
     style: CaptionStyle,
-    fontSizeSp: Int = 22
+    fontSizeSp: Int = 22,
+    bouncingEmojisEnabled: Boolean = true
 ) {
     val words = remember(subtitleText) { subtitleText.split(" ").filter { it.isNotBlank() } }
     val activeWordIndex = (progress * words.size).toInt().coerceIn(0, (words.size - 1).coerceAtLeast(0))
+
+    // Bouncing scale for current active word
+    val bounceTransition = rememberInfiniteTransition(label = "karaokeBounce")
+    val bounceScale by bounceTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(220, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bounceScale"
+    )
 
     when (style) {
         CaptionStyle.KARAOKE_POP -> {
@@ -429,7 +443,9 @@ fun KaraokeSubtitleBox(
                 shape = RoundedCornerShape(12.dp),
                 color = Color.Black.copy(alpha = 0.75f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, StudioBorder),
-                modifier = Modifier.shadow(8.dp, RoundedCornerShape(12.dp))
+                modifier = Modifier
+                    .shadow(8.dp, RoundedCornerShape(12.dp))
+                    .scale(if (bouncingEmojisEnabled) bounceScale else 1f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -437,7 +453,7 @@ fun KaraokeSubtitleBox(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = buildKaraokeSpannable(words, activeWordIndex, highlightWords),
+                        text = buildKaraokeSpannable(words, activeWordIndex, highlightWords, bouncingEmojisEnabled),
                         fontSize = fontSizeSp.sp,
                         fontWeight = FontWeight.Black,
                         textAlign = TextAlign.Center,
@@ -514,7 +530,8 @@ fun KaraokeSubtitleBox(
 private fun buildKaraokeSpannable(
     words: List<String>,
     activeIndex: Int,
-    highlightKeywords: List<String>
+    highlightKeywords: List<String>,
+    bouncingEmojisEnabled: Boolean = true
 ): androidx.compose.ui.text.AnnotatedString {
     val cleanHighlightKeywords = highlightKeywords.map { it.uppercase().trim() }
     return androidx.compose.ui.text.buildAnnotatedString {
@@ -541,10 +558,33 @@ private fun buildKaraokeSpannable(
             append(word)
             pop()
 
+            // Context-aware viral emoji for current word
+            if (isCurrent && bouncingEmojisEnabled) {
+                val emoji = getContextEmojiForWord(word)
+                if (emoji.isNotBlank()) {
+                    append(" $emoji")
+                }
+            }
+
             if (index < words.size - 1) {
                 append(" ")
             }
         }
+    }
+}
+
+private fun getContextEmojiForWord(word: String): String {
+    val w = word.lowercase()
+    return when {
+        w.contains("para") || w.contains("zengin") || w.contains("gelir") || w.contains("dolar") || w.contains("fiyat") -> "💰"
+        w.contains("hata") || w.contains("dikkat") || w.contains("tehlike") || w.contains("yasak") -> "⚠️"
+        w.contains("sır") || w.contains("gizem") || w.contains("şok") || w.contains("korku") -> "😱"
+        w.contains("hızlı") || w.contains("ateş") || w.contains("trend") || w.contains("viral") -> "🔥"
+        w.contains("zaman") || w.contains("saat") || w.contains("dakika") || w.contains("gün") -> "⏱️"
+        w.contains("roket") || w.contains("büyüme") || w.contains("uç") || w.contains("fırla") -> "🚀"
+        w.contains("beyin") || w.contains("akıl") || w.contains("zeka") || w.contains("düşün") -> "🧠"
+        w.contains("adım") || w.contains("hedef") || w.contains("kural") || w.contains("taktik") -> "🎯"
+        else -> ""
     }
 }
 

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.TrendingUp
@@ -584,7 +585,67 @@ fun PublishPackageScreen(
                     }
                 }
 
-                // 5. Share to YouTube Action Button
+                // 5. YouTube AI / Sentetik İçerik Bildirim Kartı (Ceza Koruması)
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = StudioSurfaceElevated),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.5f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.Shield, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        text = "YouTube Studio AI Bildirim Formu",
+                                        color = TextPrimary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                CopyActionButton(
+                                    textToCopy = project.algorithmSafety.youtubeSyntheticDeclaration,
+                                    label = "Kopyala"
+                                )
+                            }
+
+                            Text(
+                                text = "YouTube Studio'da 'Değiştirilmiş veya Sentetik İçerik mi?' sorusunda EVET'i işaretleyip alttaki açıklamayı yapıştırabilirsiniz. Sıfır ceza güvencesi sağlar.",
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                lineHeight = 15.sp
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = StudioSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = project.algorithmSafety.youtubeSyntheticDeclaration,
+                                    color = TextPrimary,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                    modifier = Modifier.padding(10.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 6. Share to YouTube Action Button
                 item {
                     Button(
                         onClick = {
@@ -627,7 +688,13 @@ fun PublishPackageScreen(
                         Konu: ${project.topic}
                         Kategori: ${project.niche.label}
                         Süre: ${project.durationSeconds} saniye
-                        Viral Kanca: ${project.script.hookLine}
+                        Viral Kanca (Hook): ${project.script.hookLine}
+                        Aktif Kanca Tipi: Kanca ${project.splitHooks.activeHook.name}
+
+                        --- ALGORİTMA CEZA KALKANI & YOUTUBE BİLDİRİMİ ---
+                        Güvenlik Puanı: %${project.algorithmSafety.safetyScore} (${project.algorithmSafety.penaltyRiskLevel})
+                        YouTube Studio Sentetik İçerik Bildirim Metni:
+                        ${project.algorithmSafety.youtubeSyntheticDeclaration}
 
                         --- INSTAGRAM REELS ---
                         Açıklama:

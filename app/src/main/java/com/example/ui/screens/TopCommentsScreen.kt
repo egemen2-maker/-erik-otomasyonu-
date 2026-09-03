@@ -473,11 +473,52 @@ fun TopCommentsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "API & Hesap Bağla",
+                                        text = "API & Anahtar Ayarları",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = StudioPrimary
                                     )
+                                }
+                            }
+
+                            // Quick Direct URL Live Comment Fetcher
+                            var directVideoUrl by remember { mutableStateOf("") }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = directVideoUrl,
+                                    onValueChange = { directVideoUrl = it },
+                                    placeholder = { Text("Video Linki (YouTube / Shorts / Reels)", fontSize = 11.sp) },
+                                    modifier = Modifier.weight(1f).height(46.dp),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp)
+                                )
+
+                                Button(
+                                    onClick = {
+                                        if (directVideoUrl.isNotBlank()) {
+                                            viewModel.fetchLiveCommentsFromAnyUrl(directVideoUrl)
+                                        } else {
+                                            viewModel.loadTopCommentsForProject()
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = YouTubeRed),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    modifier = Modifier.height(46.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CloudSync,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Gerçek Yorumları Çek", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
 
@@ -504,7 +545,7 @@ fun TopCommentsScreen(
                                                 .background(if (socialConfig.isYouTubeConnected) SuccessGreen else Color.Gray)
                                         )
                                         Text(
-                                            text = if (socialConfig.isYouTubeConnected) "YouTube: Canlı" else "YouTube: Pasif",
+                                            text = if (socialConfig.isYouTubeConnected) "YouTube: Canlı" else "YouTube: Hazır",
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = TextPrimary,
@@ -532,7 +573,7 @@ fun TopCommentsScreen(
                                                 .background(if (socialConfig.isInstagramConnected) SuccessGreen else Color.Gray)
                                         )
                                         Text(
-                                            text = if (socialConfig.isInstagramConnected) "Instagram: Canlı" else "Instagram: Pasif",
+                                            text = if (socialConfig.isInstagramConnected) "Instagram: Canlı" else "Instagram: Hazır",
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = TextPrimary,
@@ -1335,6 +1376,7 @@ fun ApiConnectionDialog(
     onFetchInstagram: (accessToken: String, mediaInput: String) -> Unit,
     onSaveConfig: (SocialApiConfig) -> Unit
 ) {
+    var geminiKey by remember { mutableStateOf(currentConfig.geminiApiKey) }
     var ytApiKey by remember { mutableStateOf(currentConfig.youtubeApiKey) }
     var ytVideoInput by remember { mutableStateOf(currentConfig.youtubeVideoIdOrUrl) }
     var ytOAuthToken by remember { mutableStateOf(currentConfig.youtubeOAuthToken) }
@@ -1342,7 +1384,7 @@ fun ApiConnectionDialog(
     var igAccessToken by remember { mutableStateOf(currentConfig.instagramAccessToken) }
     var igMediaInput by remember { mutableStateOf(currentConfig.instagramMediaIdOrUrl) }
 
-    var selectedTab by remember { mutableStateOf(0) } // 0: YouTube, 1: Instagram
+    var selectedTab by remember { mutableStateOf(0) } // 0: YouTube, 1: Instagram, 2: Gemini
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1371,7 +1413,7 @@ fun ApiConnectionDialog(
             ) {
                 item {
                     Text(
-                        text = "YouTube Data API v3 ve Instagram Graph API ile gerçek kanalınızdan/hesabınızdan canlı izleyici yorumlarını çekin ve AI ile otomatik yanıtlayın.",
+                        text = "YouTube Data API v3, Instagram Graph API ve Google Gemini API ile gerçek kanalınızdan canlı izleyici yorumlarını çekin ve AI ile otomatik yanıtlayın.",
                         fontSize = 12.sp,
                         color = TextSecondary,
                         lineHeight = 16.sp
@@ -1381,7 +1423,7 @@ fun ApiConnectionDialog(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
@@ -1392,11 +1434,11 @@ fun ApiConnectionDialog(
                                 .clickable { selectedTab = 0 }
                         ) {
                             Text(
-                                text = "YouTube Data API",
+                                text = "YouTube",
                                 color = if (selectedTab == 0) YouTubeRed else TextSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -1410,11 +1452,29 @@ fun ApiConnectionDialog(
                                 .clickable { selectedTab = 1 }
                         ) {
                             Text(
-                                text = "Instagram Graph API",
+                                text = "Instagram",
                                 color = if (selectedTab == 1) InstagramPink else TextSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selectedTab == 2) StudioPrimary.copy(alpha = 0.15f) else StudioSurfaceVariant,
+                            border = BorderStroke(1.dp, if (selectedTab == 2) StudioPrimary else StudioBorder),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedTab = 2 }
+                        ) {
+                            Text(
+                                text = "Gemini AI",
+                                color = if (selectedTab == 2) StudioPrimary else TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -1428,7 +1488,7 @@ fun ApiConnectionDialog(
                                 value = ytApiKey,
                                 onValueChange = { ytApiKey = it },
                                 label = { Text("Google Cloud YouTube API Key") },
-                                placeholder = { Text("AIzaSy...") },
+                                placeholder = { Text("AIzaSy... (Opsiyonel - Proxy de mevcuttur)") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp)
@@ -1438,7 +1498,7 @@ fun ApiConnectionDialog(
                                 value = ytVideoInput,
                                 onValueChange = { ytVideoInput = it },
                                 label = { Text("YouTube Video / Shorts Linki veya ID") },
-                                placeholder = { Text("https://youtu.be/... veya dQw4w9WgXcQ") },
+                                placeholder = { Text("https://youtu.be/... veya video ID") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp)
@@ -1456,7 +1516,7 @@ fun ApiConnectionDialog(
 
                             Button(
                                 onClick = { onFetchYouTube(ytApiKey, ytVideoInput) },
-                                enabled = !isLoading && ytApiKey.isNotBlank() && ytVideoInput.isNotBlank(),
+                                enabled = !isLoading && ytVideoInput.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = YouTubeRed),
                                 shape = RoundedCornerShape(12.dp)
@@ -1482,7 +1542,7 @@ fun ApiConnectionDialog(
                             }
                         }
                     }
-                } else {
+                } else if (selectedTab == 1) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
@@ -1507,7 +1567,7 @@ fun ApiConnectionDialog(
 
                             Button(
                                 onClick = { onFetchInstagram(igAccessToken, igMediaInput) },
-                                enabled = !isLoading && igAccessToken.isNotBlank() && igMediaInput.isNotBlank(),
+                                enabled = !isLoading && igMediaInput.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = InstagramPink),
                                 shape = RoundedCornerShape(12.dp)
@@ -1533,6 +1593,25 @@ fun ApiConnectionDialog(
                             }
                         }
                     }
+                } else {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = geminiKey,
+                                onValueChange = { geminiKey = it },
+                                label = { Text("Google AI Gemini API Key") },
+                                placeholder = { Text("AIzaSy... (Gemini 3.5 Flash)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Text(
+                                text = "Kendi Gemini API anahtarınızı girerek sınırsız yapay zeka video ve yorum üretimi yapabilirsiniz.",
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -1541,6 +1620,7 @@ fun ApiConnectionDialog(
                 onClick = {
                     onSaveConfig(
                         currentConfig.copy(
+                            geminiApiKey = geminiKey,
                             youtubeApiKey = ytApiKey,
                             youtubeVideoIdOrUrl = ytVideoInput,
                             youtubeOAuthToken = ytOAuthToken,

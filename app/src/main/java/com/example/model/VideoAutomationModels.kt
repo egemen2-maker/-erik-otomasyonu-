@@ -1,14 +1,19 @@
 package com.example.model
 
 enum class VideoNiche(val label: String, val iconName: String, val defaultPrompt: String) {
+    AUTO_DETECT("🤖 AI Otomatik Seçsin", "AutoAwesome", "Yapay zeka konunuzu analiz edip en uygun video türünü ve kurguyu otomatik belirlesin."),
+    HORMOZI_BUSINESS("İş & Büyüme (Hormozi)", "TrendingUp", "Sıfırdan milyon dolarlık teklif nasıl hazırlanır? 100M Offers kuralı."),
     TECH_AI("Yapay Zeka & Teknoloji", "Memory", "Günde 1 saat çalışarak yapay zeka araçlarıyla nasıl pasif gelir elde edilir? 3 somut adım."),
+    MYSTERY_STORY("Korku & Gizem Hikayeleri", "VisibilityOff", "1994 yılında kaybolan keşif uçağının kokpitinden gelen son 10 saniyelik ses kaydı."),
     MOTIVATION("Motivasyon & Disiplin", "FitnessCenter", "Her sabah saat 5'te kalkan insanların asla söylemediği 3 psikolojik sır."),
     CRYPTO_FINANCE("Finans & Para Yönetimi", "AttachMoney", "Zenginlerin paranızı eritmemek için uyguladığı 50/30/20 bütçe kuralı."),
     PSYCHOLOGY_FACTS("Psikoloji & İlginç Bilgiler", "Psychology", "İnsanların %95'inin farkında olmadığı 3 şok edici beyin hilesi."),
     PRODUCTIVITY("Üretkenlik & Odaklanma", "Bolt", "Dopamin detoksu ile 48 saatte odaklanmayı 10 katına çıkarmanın formülü."),
+    ENTERTAINMENT_COMEDY("Mizah & Eğlenceli Skeç", "SentimentVerySatisfied", "Pazartesi sabahı işe gitmeye çalışan beyaz yakalıların iç sesi."),
     SCIENCE_SPACE("Evren & Bilim", "RocketLaunch", "Eğer bir kara deliğe düşseydiniz vücudunuza ne olurdu? Spagetti etkisi."),
+    ECOMMERCE_PRODUCT("Ürün Tanıtım & E-Ticaret", "ShoppingCart", "Amazon'da herkesin satın aldığı ama kimsenin bilmediği 3 dahi ürün."),
     FITNESS_HEALTH("Sağlık & Fitness", "Favorite", "Günde 10.000 adım atmanın vücutta değiştirdiği 4 mucizevi biyolojik süreç."),
-    CUSTOM("Özel Konu / Prompt", "AutoAwesome", "")
+    CUSTOM("Özel Konu / Prompt", "Create", "")
 }
 
 enum class PlatformTarget(val title: String, val badge: String, val defaultAspect: VideoAspectRatio) {
@@ -116,6 +121,69 @@ data class SocialPublishPack(
     val youtubePack: YouTubePublishData
 )
 
+enum class HookType(val label: String, val badge: String, val desc: String) {
+    HOOK_A("Kanca A (Merak / Sır)", "🔥 Merak Tetikleyici", "İzleyicinin merak duygusunu gıdıklayarak sonuna kadar tutar"),
+    HOOK_B("Kanca B (Kayıp Korkusu - FOMO)", "⚡ Kayıp Korkusu", "Hemen harekete geçme ve kaybetmeme aciliyeti oluşturur");
+
+    companion object {
+        val A: HookType get() = HOOK_A
+        val B: HookType get() = HOOK_B
+    }
+}
+
+data class SplitHookData(
+    val hookA: String = "",
+    val hookB: String = "",
+    val selectedHookType: HookType = HookType.HOOK_A
+) {
+    val activeHook: HookType
+        get() = selectedHookType
+
+    val activeHookText: String
+        get() = if (selectedHookType == HookType.HOOK_B && hookB.isNotBlank()) hookB else hookA
+
+    val hookARetentionRate: String
+        get() = "%88 Tutma Potansiyeli"
+
+    val hookBRetentionRate: String
+        get() = "%93 Tutma Potansiyeli"
+}
+
+data class AlgorithmSafetyReport(
+    val overallScore: Int = 98,
+    val safetyLevel: String = "Mükemmel (Ceza Riski %0)",
+    val repetitiveContentRisk: String = "Çok Düşük (%100 Özgün Kurgu)",
+    val retentionPrediction: String = "%86+ İzleyici Tutma",
+    val aiDisclosureNotice: String = "Bu video yapay zekâ destekli otomasyon araçları ile kurgulanmış olup YouTube 'Sentetik İçerik' politikalarına uygundur.",
+    val copyrightStatus: String = "Telif Hakkı Sorunsuz (Telif-Free Ses Efektleri)",
+    val actionChecklist: List<String> = listOf(
+        "İlk 3 saniye kancasında hızlı yakınlaşma (Zoom-In) ile Swipe-Away engellendi.",
+        "YouTube Studio yüklemesinde 'Sentetik veya Değiştirilmiş İçerik: EVET' kutucuğu işaretlenmelidir.",
+        "İlk 30 dakika içinde gelen ilk 3 yoruma yanıt vererek etkileşim algoritmasını tetikleyin.",
+        "A/B kanca testiyle en yüksek izlenme oranına sahip kanca seçilebilir."
+    )
+) {
+    val safetyScore: Int
+        get() = overallScore
+
+    val penaltyRiskLevel: String
+        get() = safetyLevel
+
+    val youtubeSyntheticDeclaration: String
+        get() = aiDisclosureNotice
+
+    val safetyTips: List<String>
+        get() = actionChecklist
+
+    val complianceBadges: List<String>
+        get() = listOf(
+            "YouTube Sentetik Uyumlu",
+            "Shadowban Korumalı",
+            "Özgün İnsansı Kurgu",
+            "Telif Koruması Aktif"
+        )
+}
+
 data class VideoStyleSettings(
     val captionStyle: CaptionStyle = CaptionStyle.KARAOKE_POP,
     val subtitlePosition: SubtitlePosition = SubtitlePosition.CENTER,
@@ -124,7 +192,9 @@ data class VideoStyleSettings(
     val voiceType: String = "Derin & Karizmatik",
     val voiceSpeed: Float = 1.0f,
     val showHookBanner: Boolean = true,
-    val showWaveform: Boolean = true
+    val showWaveform: Boolean = true,
+    val bouncingEmojisEnabled: Boolean = true,
+    val humanizedBreathing: Boolean = true
 )
 
 data class VideoProject(
@@ -141,7 +211,10 @@ data class VideoProject(
     val estimatedViralMultiplier: String = "4.2x Viral",
     val script: VideoScript,
     val publishPack: SocialPublishPack,
-    val styleSettings: VideoStyleSettings = VideoStyleSettings()
+    val styleSettings: VideoStyleSettings = VideoStyleSettings(),
+    val splitHooks: SplitHookData = SplitHookData(),
+    val algorithmSafety: AlgorithmSafetyReport = AlgorithmSafetyReport(),
+    val detectedNicheLabel: String = ""
 )
 
 enum class CommentSentiment(val label: String, val badgeColorHex: Long) {

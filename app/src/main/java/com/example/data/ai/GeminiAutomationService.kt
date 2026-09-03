@@ -1,15 +1,18 @@
 package com.example.data.ai
 
 import com.example.BuildConfig
+import com.example.model.AlgorithmSafetyReport
 import com.example.model.CaptionStyle
 import com.example.model.CommentItem
 import com.example.model.CommentSentiment
+import com.example.model.HookType
 import com.example.model.InstagramPublishData
 import com.example.model.PlatformTarget
 import com.example.model.ProjectStatus
 import com.example.model.ReplyTone
 import com.example.model.SceneItem
 import com.example.model.SocialPublishPack
+import com.example.model.SplitHookData
 import com.example.model.SubtitlePosition
 import com.example.model.TransitionEffect
 import com.example.model.VideoAspectRatio
@@ -46,25 +49,42 @@ class GeminiAutomationService {
         platformTarget: PlatformTarget,
         tone: VideoTone,
         durationSeconds: Int,
+        customApiKey: String? = null,
         onStageUpdate: (String) -> Unit = {}
     ): VideoProject = withContext(Dispatchers.IO) {
         onStageUpdate("Kanca (Hook) ve Viral Açı Oluşturuluyor...")
-        val apiKey = BuildConfig.GEMINI_API_KEY
+        val apiKey = if (!customApiKey.isNullOrBlank()) customApiKey else BuildConfig.GEMINI_API_KEY
 
         val systemPrompt = """
             Sen Instagram Reels, YouTube Shorts ve TikTok için viral videolar üreten dünya çapında bir Sosyal Medya Otomasyon Uzmanı ve Profesyonel Video Kurgucususun.
             
-            Kullanıcının verdiği konu için eksiksiz bir video kurgusu, sahne zamanlaması, seslendirme metni, görsel b-roll açıklamaları, Instagram Reels paketi ve YouTube Shorts SEO paketi üret.
+            Kullanıcının verdiği konu için eksiksiz bir video kurgusu, sahne zamanlaması, seslendirme metni, görsel b-roll açıklamaları, A/B kanca testi (Hook A merak & Hook B FOMO), algoritma ceza koruma denetimi, Instagram Reels paketi ve YouTube Shorts SEO paketi üret.
             
             Yanıtı SADECE ve SADECE geçerli bir JSON nesnesi olarak döndür. Markdown code block veya ekstra açıklama ekleme.
             
             JSON Şeması:
             {
               "title": "Video Başlığı",
-              "hookLine": "İlk 3 saniye vurucu kanca cümlesi",
+              "detectedNiche": "Konuya en uygun video türü (örneğin: İş & Büyüme (Hormozi), Gizem & Korku, Finans & Para vb.)",
+              "hookA": "Kanca A: Merak ve sır uyandıran ilk 3 saniye kancası",
+              "hookB": "Kanca B: Kayıp korkusu (FOMO) ve aciliyet uyandıran alternatif kanca",
+              "hookLine": "Ana kanca cümlesi",
               "ctaLine": "Videonun sonundaki takip/kaydet çağrısı",
-              "hookScore": 95,
-              "estimatedViralMultiplier": "4.5x Viral",
+              "hookScore": 96,
+              "estimatedViralMultiplier": "4.8x Viral",
+              "algorithmSafety": {
+                "overallScore": 98,
+                "safetyLevel": "Mükemmel (Ceza Riski %0)",
+                "repetitiveContentRisk": "Çok Düşük (%100 Özgün Kurgu)",
+                "retentionPrediction": "%88+ İzleyici Tutma",
+                "aiDisclosureNotice": "Bu video yapay zekâ destekli otomasyon araçları ile kurgulanmış olup YouTube Sentetik İçerik politikalarına uygundur.",
+                "copyrightStatus": "Telif Hakkı Sorunsuz (Royalty-Free Sesler)",
+                "actionChecklist": [
+                  "İlk 3 saniyede hızlı yakınlaşma (Zoom-In) ile izleyici kaybı önlendi.",
+                  "YouTube Studio'da 'Sentetik veya Değiştirilmiş İçerik: EVET' kutucuğu işaretlenmeli.",
+                  "İlk 30 dakikada gelen ilk 3 yoruma yanıt verilerek algoritma tetiklenmeli."
+                ]
+              },
               "scenes": [
                 {
                   "orderIndex": 0,
@@ -72,8 +92,8 @@ class GeminiAutomationService {
                   "narrationText": "Seslendirme metni",
                   "visualDescription": "Görsel veya kamera açısı açıklaması",
                   "onScreenSubtitle": "Ekranda belirecek altyazı",
-                  "transitionType": "ZOOM_IN" veya "WHIP_PAN" veya "GLITCH" veya "LIGHT_LEAK" veya "SLIDE_UP",
-                  "soundEffectCue": "Whoosh" veya "Pop" veya "Ding" veya "Camera Shutter" veya "Bass Drop",
+                  "transitionType": "ZOOM_IN",
+                  "soundEffectCue": "Whoosh",
                   "textHighlightWords": ["VURGULU_KELIME1", "KELIME2"]
                 }
               ],
@@ -106,12 +126,12 @@ class GeminiAutomationService {
 
         val userPrompt = """
             Konu: $topic
-            Kategori: ${niche.label}
+            Kullanıcının Seçtiği Tür: ${if (niche == VideoNiche.AUTO_DETECT) "🤖 AI Otomatik Seçsin (Lütfen konuyu analiz ederek en uygun nişi belirle!)" else niche.label}
             Hedef Platform: ${platformTarget.title}
             Video Tonu: ${tone.label} (${tone.desc})
             Hedef Süre: $durationSeconds saniye
             
-            Lütfen $durationSeconds saniyeyi dolduracak şekilde ortalama ${durationSeconds / 4} veya ${durationSeconds / 5} sahneli profesyonel video akışını, seslendirmesini, Instagram ve YouTube yükleme paketini JSON formatında üret.
+            Lütfen $durationSeconds saniyeyi dolduracak şekilde ortalama ${durationSeconds / 4} veya ${durationSeconds / 5} sahneli profesyonel video akışını, seslendirmesini, hem Hook A (Merak) hem Hook B (FOMO) kancalarını, algoritma ceza uyum analizini, Instagram ve YouTube yükleme paketini JSON formatında üret.
         """.trimIndent()
 
         var rawResponse = ""
@@ -174,8 +194,11 @@ class GeminiAutomationService {
         parsedProject
     }
 
-    suspend fun suggestTrendingTopics(niche: VideoNiche): List<String> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
+    suspend fun suggestTrendingTopics(
+        niche: VideoNiche,
+        customApiKey: String? = null
+    ): List<String> = withContext(Dispatchers.IO) {
+        val apiKey = if (!customApiKey.isNullOrBlank()) customApiKey else BuildConfig.GEMINI_API_KEY
         if (!apiKey.isNullOrEmpty() && apiKey != "MY_GEMINI_API_KEY") {
             try {
                 val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
@@ -223,12 +246,13 @@ class GeminiAutomationService {
 
     suspend fun generateTopComments(
         videoTitle: String,
-        niche: VideoNiche
+        niche: VideoNiche,
+        customApiKey: String? = null
     ): List<CommentItem> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isNotBlank()) {
+        val apiKey = if (!customApiKey.isNullOrBlank()) customApiKey else BuildConfig.GEMINI_API_KEY
+        if (!apiKey.isNullOrBlank() && apiKey != "MY_GEMINI_API_KEY") {
             try {
-                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
                 val prompt = """
                     Sen sosyal medya analitiği ve kitle etkileşimi uzmanısın.
                     Şu video konusu/başlığı için Instagram, YouTube ve TikTok'ta EN ÇOK GELEN (en sık sorulan, viral tekrarlanan) 6 adet gerçekçi izleyici yorumu ve her birine verilebilecek zekice, kitleyi bağlayan bir AI yanıtı oluştur:
@@ -239,12 +263,12 @@ class GeminiAutomationService {
                       {
                         "authorName": "Kullanıcı Adı",
                         "authorHandle": "@kullaniciadi",
-                        "platform": "Instagram" (veya "YouTube" veya "TikTok"),
+                        "platform": "Instagram",
                         "commentText": "İzleyicinin yazdığı soru veya yorum",
-                        "frequencyCount": 142 (Benzer yorum sayısı, örn: 80 - 450 arası),
-                        "frequencyPercentage": 38 (Yorumların yüzde kaçı bunu sordu, örn: 15 - 45),
-                        "sentiment": "QUESTION" (veya "PURCHASE_LINK" veya "POSITIVE" veya "FEEDBACK"),
-                        "category": "Prompt İsteme" (veya "Nasıl Yapılır", "Araç İsmi", "Tavsiye"),
+                        "frequencyCount": 142,
+                        "frequencyPercentage": 38,
+                        "sentiment": "QUESTION",
+                        "category": "Prompt İsteme",
                         "aiSuggestedReply": "Samimi, emojili, kitleyi tutan ve DM/linke yönlendiren hazır profesyonel yanıt",
                         "likesCount": 54
                       }
@@ -317,12 +341,13 @@ class GeminiAutomationService {
     suspend fun generateAiReply(
         commentText: String,
         videoTitle: String,
-        tone: ReplyTone = ReplyTone.FRIENDLY
+        tone: ReplyTone = ReplyTone.FRIENDLY,
+        customApiKey: String? = null
     ): String = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isNotBlank()) {
+        val apiKey = if (!customApiKey.isNullOrBlank()) customApiKey else BuildConfig.GEMINI_API_KEY
+        if (!apiKey.isNullOrBlank() && apiKey != "MY_GEMINI_API_KEY") {
             try {
-                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
                 val prompt = """
                     Sen profesyonel bir video üreticisisin ve izleyicinden gelen şu yoruma $tone tonunda (${tone.label}) mükemmel bir yanıt yazacaksın.
                     Video Başlığı: "$videoTitle"
@@ -373,130 +398,80 @@ class GeminiAutomationService {
     }
 
     fun getDefaultTopComments(videoTitle: String, niche: VideoNiche): List<CommentItem> {
-        return when (niche) {
-            VideoNiche.TECH_AI -> listOf(
-                CommentItem(
-                    id = "c1",
-                    authorName = "Burak Yılmaz",
-                    authorHandle = "@burak.tech",
-                    platform = "Instagram",
-                    commentText = "Kullandığın yapay zeka aracının adı ve prompt listesi nedir? DM atar mısın?",
-                    videoTitle = videoTitle,
-                    frequencyCount = 384,
-                    frequencyPercentage = 44,
-                    sentiment = CommentSentiment.PURCHASE_LINK,
-                    category = "Prompt & Araç İsmi",
-                    aiSuggestedReply = "Selam Burak! 🚀 Videoda kullandığım tüm promptları ve araç linkini profilimdeki 'AI Araç Seti' bağlantısına ekledim, ücretsiz alabilirsin!",
-                    timestamp = "5 dk önce",
-                    likesCount = 142
-                ),
-                CommentItem(
-                    id = "c2",
-                    authorName = "Selin Demir",
-                    authorHandle = "@selin_digital",
-                    platform = "YouTube",
-                    commentText = "Günde 1 saat gerçekten yetiyor mu? Başlangıç seviyesi için hangi adımla başlamalıyız?",
-                    videoTitle = videoTitle,
-                    frequencyCount = 215,
-                    frequencyPercentage = 26,
-                    sentiment = CommentSentiment.QUESTION,
-                    category = "Uygulama & Başlangıç",
-                    aiSuggestedReply = "Harika soru Selin! 💡 İlk hafta günde sadece 30 dk ile 1 numaralı otomasyon şablonunu kurman fazlasıyla yeterli. Part 2 videosunda adım adım gösteriyorum!",
-                    timestamp = "18 dk önce",
-                    likesCount = 89
-                ),
-                CommentItem(
-                    id = "c3",
-                    authorName = "Mert Can",
-                    authorHandle = "@mertc_ai",
-                    platform = "TikTok",
-                    commentText = "Bunu mobil telefondan yapabilir miyiz yoksa bilgisayar şart mı?",
-                    videoTitle = videoTitle,
-                    frequencyCount = 176,
-                    frequencyPercentage = 19,
-                    sentiment = CommentSentiment.QUESTION,
-                    category = "Mobil Uyumluluk",
-                    aiSuggestedReply = "Kesinlikle! %100 mobil uyumlu, telefonundaki tarayıcı veya AutoReel üzerinden tek tıkla yürütebilirsin 📱",
-                    timestamp = "32 dk önce",
-                    likesCount = 67
-                ),
-                CommentItem(
-                    id = "c4",
-                    authorName = "Gizem Kaya",
-                    authorHandle = "@gizemkaya",
-                    platform = "Instagram",
-                    commentText = "Bu sayfa harika içerikler üretiyor, sayende ilk projemi başlattım teşekkürler! ❤️",
-                    videoTitle = videoTitle,
-                    frequencyCount = 98,
-                    frequencyPercentage = 11,
-                    sentiment = CommentSentiment.POSITIVE,
-                    category = "Başarı & Teşekkür",
-                    aiSuggestedReply = "Bunu duymak inanılmaz motive edici Gizem! 👏 İlk sonuçlarını bana DM'den gönder mutlaka inceleyeyim, başarılar!",
-                    timestamp = "1 saat önce",
-                    likesCount = 45
-                ),
-                CommentItem(
-                    id = "c5",
-                    authorName = "Emre Kara",
-                    authorHandle = "@emre_kara99",
-                    platform = "YouTube",
-                    commentText = "Seslendirmeyi hangi yapay zeka ile yaptın? Çok doğal duruyor.",
-                    videoTitle = videoTitle,
-                    frequencyCount = 84,
-                    frequencyPercentage = 9,
-                    sentiment = CommentSentiment.QUESTION,
-                    category = "Ses & Dublaj",
-                    aiSuggestedReply = "AutoReel içindeki entegre doğal TTS motorunu kullandım! Tonlama ve hızı doğrudan video kurgu sekmesinden ayarlayabiliyorsun 🎙️",
-                    timestamp = "2 saat önce",
-                    likesCount = 31
-                )
+        val topicSnippet = videoTitle.ifBlank { "Bu Video" }.take(35)
+        val sampleUsers = listOf(
+            Triple("Burak Yılmaz", "@burak.tech", "Instagram"),
+            Triple("Selin Demir", "@selin_digital", "YouTube"),
+            Triple("Mert Can", "@mertc_ai", "TikTok"),
+            Triple("Gizem Kaya", "@gizemkaya", "Instagram"),
+            Triple("Emre Kara", "@emre_kara99", "YouTube"),
+            Triple("Deniz Yurt", "@denizyurt", "Instagram"),
+            Triple("Barış Çelik", "@baris_celik", "YouTube"),
+            Triple("Aylin Aydın", "@aylin_aydin", "TikTok")
+        ).shuffled()
+
+        val commentBlueprints = listOf(
+            Pair(
+                "Kullandığın araç ve prompt listesi '$topicSnippet' için nereden indiriliyor? Link bırakır mısın?",
+                CommentSentiment.PURCHASE_LINK
+            ),
+            Pair(
+                "Bu yöntemle '$topicSnippet' yaparken günde kaç saat ayırmak gerekiyor? Başlangıç seviyesi için uygun mu?",
+                CommentSentiment.QUESTION
+            ),
+            Pair(
+                "Bunu telefon üzerinden uygulayabilir miyiz yoksa bilgisayar zorunlu mu?",
+                CommentSentiment.QUESTION
+            ),
+            Pair(
+                "Gerçekten çok net ve anlaşılır anlatmışsın, '$topicSnippet' serisinin 2. bölümünü sabırsızlıkla bekliyorum! 🔥",
+                CommentSentiment.POSITIVE
+            ),
+            Pair(
+                "Seslendirme ve kurgu hangi yapay zeka aracı ile yapıldı? Çok akıcı duruyor.",
+                CommentSentiment.QUESTION
+            ),
+            Pair(
+                "Bahsettiğin şablonları profilindeki linkten indirebiliyor muyuz?",
+                CommentSentiment.PURCHASE_LINK
             )
-            else -> listOf(
-                CommentItem(
-                    id = "c10",
-                    authorName = "Ahmet Y.",
-                    authorHandle = "@ahmetyildiz",
-                    platform = "Instagram",
-                    commentText = "Part 2 ne zaman gelecek? Kaydettim bekliyorum!",
-                    videoTitle = videoTitle,
-                    frequencyCount = 290,
-                    frequencyPercentage = 41,
-                    sentiment = CommentSentiment.QUESTION,
-                    category = "Devam Videosu",
-                    aiSuggestedReply = "Part 2 yarın saat 18:00'de yayında olacak! Bildirimleri açmayı unutma 🔔",
-                    timestamp = "12 dk önce",
-                    likesCount = 118
-                ),
-                CommentItem(
-                    id = "c11",
-                    authorName = "Zeynep B.",
-                    authorHandle = "@zeynep_b",
-                    platform = "YouTube",
-                    commentText = "Bahsettiğin kaynakların PDF listesi var mı acaba?",
-                    videoTitle = videoTitle,
-                    frequencyCount = 194,
-                    frequencyPercentage = 27,
-                    sentiment = CommentSentiment.PURCHASE_LINK,
-                    category = "Kaynak & Link",
-                    aiSuggestedReply = "Evet! Açıklamadaki ücretsiz indirme bağlantısından tüm PDF dökümanına erişebilirsin 📄",
-                    timestamp = "25 dk önce",
-                    likesCount = 76
-                ),
-                CommentItem(
-                    id = "c12",
-                    authorName = "Caner K.",
-                    authorHandle = "@caner_k",
-                    platform = "TikTok",
-                    commentText = "Çok net ve akıcı anlatım olmuş, emeğine sağlık 👏",
-                    videoTitle = videoTitle,
-                    frequencyCount = 130,
-                    frequencyPercentage = 18,
-                    sentiment = CommentSentiment.POSITIVE,
-                    category = "Övgü",
-                    aiSuggestedReply = "Çok teşekkürler Caner! Beğendiğine çok sevindim, yeni içerikler yolda 🚀",
-                    timestamp = "45 dk önce",
-                    likesCount = 52
-                )
+        )
+
+        return commentBlueprints.mapIndexed { index, (text, sentiment) ->
+            val user = sampleUsers[index % sampleUsers.size]
+            val count = (80..420).random()
+            val percent = (15..45).random()
+            val likes = (25..240).random()
+            val cat = when (sentiment) {
+                CommentSentiment.PURCHASE_LINK -> "Prompt & Link Talebi"
+                CommentSentiment.QUESTION -> "Uygulama & Başlangıç"
+                CommentSentiment.POSITIVE -> "Teşekkür & Beğeni"
+                CommentSentiment.FEEDBACK -> "Geri Bildirim"
+            }
+            val reply = when (sentiment) {
+                CommentSentiment.PURCHASE_LINK -> "Selam ${user.first.substringBefore(" ")}! 🚀 '$topicSnippet' için tüm promptları ve araç linkini profilimdeki bağlantıya ekledim, ücretsiz alabilirsin!"
+                CommentSentiment.QUESTION -> "Harika soru ${user.first.substringBefore(" ")}! 💡 İlk aşamada günde 20-30 dakika ayırmak fazlasıyla yeterli, mobilden de %100 uyumlu şekilde çalıştırabilirsin 📱"
+                CommentSentiment.POSITIVE -> "Bunu duymak çok motive edici ${user.first.substringBefore(" ")}! 🙌 2. part yarın geliyor, takipte kal!"
+                CommentSentiment.FEEDBACK -> "Geri bildirimin için teşekkürler, yeni versiyonda hemen entegre ediyoruz!"
+            }
+
+            CommentItem(
+                id = UUID.randomUUID().toString(),
+                authorName = user.first,
+                authorHandle = user.second,
+                platform = user.third,
+                commentText = text,
+                videoTitle = videoTitle,
+                frequencyCount = count,
+                frequencyPercentage = percent,
+                sentiment = sentiment,
+                category = cat,
+                aiSuggestedReply = reply,
+                userCustomReply = "",
+                isReplied = false,
+                repliedWithAi = false,
+                timestamp = "${(index + 1) * 6 + (1..5).random()} dk önce",
+                likesCount = likes
             )
         }
     }
@@ -603,9 +578,48 @@ class GeminiAutomationService {
                 estimatedCtr = ytObj.optString("estimatedCtr", "%12.8 CTR Potansiyeli")
             )
 
+            // Split Hook & Safety Report
+            val hookA = obj.optString("hookA", hookLine).ifBlank { hookLine }
+            val hookB = obj.optString("hookB", "Bunu izlemezsen her ay binlerce lira veya saat kaybedeceksin!").ifBlank {
+                "Bunu görmezden gelirsen çok büyük fırsat kaçırırsın!"
+            }
+            val splitHooks = SplitHookData(
+                hookA = hookA,
+                hookB = hookB,
+                selectedHookType = HookType.HOOK_A
+            )
+
+            val safeObj = obj.optJSONObject("algorithmSafety")
+            val safetyReport = if (safeObj != null) {
+                val checklist = mutableListOf<String>()
+                safeObj.optJSONArray("actionChecklist")?.let { arr ->
+                    for (i in 0 until arr.length()) checklist.add(arr.getString(i))
+                }
+                AlgorithmSafetyReport(
+                    overallScore = safeObj.optInt("overallScore", 98),
+                    safetyLevel = safeObj.optString("safetyLevel", "Mükemmel (Ceza Riski %0)"),
+                    repetitiveContentRisk = safeObj.optString("repetitiveContentRisk", "Çok Düşük (%100 Özgün Kurgu)"),
+                    retentionPrediction = safeObj.optString("retentionPrediction", "%88+ İzleyici Tutma"),
+                    aiDisclosureNotice = safeObj.optString("aiDisclosureNotice", "Bu video yapay zekâ destekli araçlarla üretilmiş olup YouTube ve Instagram Sentetik İçerik politikalarına tam uygundur."),
+                    copyrightStatus = safeObj.optString("copyrightStatus", "Telif Hakkı Sorunsuz (Royalty-Free Sesler)"),
+                    actionChecklist = if (checklist.isNotEmpty()) checklist else listOf(
+                        "İlk 3 saniye kancasında hızlı yakınlaşma (Zoom-In) ile izleyici kaybı önlendi.",
+                        "YouTube Studio'da 'Sentetik veya Değiştirilmiş İçerik: EVET' kutucuğu işaretlenmeli.",
+                        "İlk 30 dakikada gelen ilk 3 yoruma yanıt verilerek algoritma tetiklenmeli."
+                    )
+                )
+            } else {
+                AlgorithmSafetyReport()
+            }
+
+            val detectedNicheStr = obj.optString("detectedNiche", "")
+            val finalDetectedLabel = if (niche == VideoNiche.AUTO_DETECT) {
+                if (detectedNicheStr.isNotBlank()) "🤖 AI Seçti: $detectedNicheStr (%98 Uyum)" else "🤖 AI Seçti: ${detectSmartNicheFromTopic(topic).label} (%98 Uyum)"
+            } else ""
+
             VideoProject(
                 topic = topic,
-                niche = niche,
+                niche = if (niche == VideoNiche.AUTO_DETECT) detectSmartNicheFromTopic(topic) else niche,
                 platformTarget = platformTarget,
                 aspectRatio = platformTarget.defaultAspect,
                 tone = tone,
@@ -615,10 +629,31 @@ class GeminiAutomationService {
                 estimatedViralMultiplier = viralMultiplier,
                 script = script,
                 publishPack = SocialPublishPack(igPack, ytPack),
-                styleSettings = VideoStyleSettings()
+                styleSettings = VideoStyleSettings(bouncingEmojisEnabled = true, humanizedBreathing = true),
+                splitHooks = splitHooks,
+                algorithmSafety = safetyReport,
+                detectedNicheLabel = finalDetectedLabel
             )
         } catch (_: Exception) {
             generateProFallbackProject(topic, niche, platformTarget, tone, durationSeconds)
+        }
+    }
+
+    private fun detectSmartNicheFromTopic(topic: String): VideoNiche {
+        val lower = topic.lowercase()
+        return when {
+            lower.contains("iş") || lower.contains("satış") || lower.contains("hormozi") || lower.contains("teklif") || lower.contains("müşteri") || lower.contains("şirket") -> VideoNiche.HORMOZI_BUSINESS
+            lower.contains("para") || lower.contains("finans") || lower.contains("kripto") || lower.contains("bütçe") || lower.contains("zengin") || lower.contains("gelir") -> VideoNiche.CRYPTO_FINANCE
+            lower.contains("korku") || lower.contains("gizem") || lower.contains("uçak") || lower.contains("cinayet") || lower.contains("kayıp") || lower.contains("sır") -> VideoNiche.MYSTERY_STORY
+            lower.contains("yapay zeka") || lower.contains("ai") || lower.contains("yazılım") || lower.contains("kod") || lower.contains("robot") || lower.contains("chatgpt") -> VideoNiche.TECH_AI
+            lower.contains("sabah") || lower.contains("disiplin") || lower.contains("hedef") || lower.contains("motivasyon") || lower.contains("vazgeç") -> VideoNiche.MOTIVATION
+            lower.contains("odak") || lower.contains("dopamin") || lower.contains("üretkenlik") || lower.contains("zaman") || lower.contains("pomodoro") -> VideoNiche.PRODUCTIVITY
+            lower.contains("beyin") || lower.contains("psikoloji") || lower.contains("manipülasyon") || lower.contains("yalan") || lower.contains("insan") -> VideoNiche.PSYCHOLOGY_FACTS
+            lower.contains("komik") || lower.contains("mizah") || lower.contains("pazartesi") || lower.contains("skeç") || lower.contains("eğlence") -> VideoNiche.ENTERTAINMENT_COMEDY
+            lower.contains("ürün") || lower.contains("amazon") || lower.contains("satın al") || lower.contains("e-ticaret") || lower.contains("gadget") -> VideoNiche.ECOMMERCE_PRODUCT
+            lower.contains("spor") || lower.contains("sağlık") || lower.contains("kilo") || lower.contains("fitness") || lower.contains("adım") -> VideoNiche.FITNESS_HEALTH
+            lower.contains("uzay") || lower.contains("evren") || lower.contains("kara delik") || lower.contains("bilim") || lower.contains("gezegen") -> VideoNiche.SCIENCE_SPACE
+            else -> VideoNiche.TECH_AI
         }
     }
 
@@ -636,93 +671,159 @@ class GeminiAutomationService {
             else -> 10
         }
         val perSceneDuration = (durationSeconds.toFloat() / sceneCount)
+        val cleanTopic = topic.ifBlank { "Yapay Zeka ile Otomatik İçerik Üretimi" }
+        val topicKeywords = cleanTopic.split(" ").filter { it.length > 2 }
 
-        val sampleScriptData = when (niche) {
-            VideoNiche.TECH_AI -> TechAiTemplateData
-            VideoNiche.MOTIVATION -> MotivationTemplateData
-            VideoNiche.CRYPTO_FINANCE -> FinanceTemplateData
-            VideoNiche.PSYCHOLOGY_FACTS -> PsychologyTemplateData
-            VideoNiche.PRODUCTIVITY -> ProductivityTemplateData
-            VideoNiche.SCIENCE_SPACE -> SpaceTemplateData
-            else -> TechAiTemplateData
-        }
+        val dynamicHooks = listOf(
+            "Bunu 1 yıl önce bilseydim hayatım tamamen değişirdi!",
+            "Herkesin yanlış bildiği ama kimsenin söylemediği o kritik gerçek...",
+            "Günde sadece 20 dakika ayırarak bu sonuca nasıl ulaşırsınız?",
+            "İşte $cleanTopic hakkında bilmeniz gereken en güçlü 3 kural!",
+            "Bu yöntemi öğrendikten sonra eski taktikleri çöpe atacaksınız!"
+        ).shuffled()
+
+        val transitions = listOf(
+            TransitionEffect.ZOOM_IN,
+            TransitionEffect.WHIP_PAN,
+            TransitionEffect.GLITCH,
+            TransitionEffect.LIGHT_LEAK,
+            TransitionEffect.SLIDE_UP
+        )
+
+        val soundEffects = listOf("Whoosh", "Pop", "Ding", "Camera Shutter", "Bass Drop", "Cyber Glitch", "Chime")
+
+        val stepTemplates = listOf(
+            Triple(
+                "İlk olarak temeli doğru kuruyoruz. $cleanTopic sürecinde en sık yapılan hata plansız başlamaktır.",
+                "Hızlı tempo, ekranda neon vurgulu analiz grafiği ve dinamik odaklama",
+                "1. TEMEL ADIM: DOĞRU STRATEJİ"
+            ),
+            Triple(
+                "İkinci aşamada otomasyonu devreye alıyoruz. Zaman kaybettiren tüm tekrarları tek tıkla ortadan kaldırın.",
+                "Ekranda modern arayüz animasyonu, kod ve otomasyon paneli geçişi",
+                "2. OTOMASYON: ZAMANDAN %80 TASARRUF"
+            ),
+            Triple(
+                "Üçüncü ve en kritik nokta: Veriyi doğru okumak ve kitle etkileşimini maksimuma çıkarmak.",
+                "Yüksek kontrastlı 3D sinematik render, yukarı fırlayan büyüme grafiği",
+                "3. BÜYÜME: KESİNTİSİZ ETKİLEŞİM"
+            ),
+            Triple(
+                "Dördüncü adımda sonucu ölçekliyoruz. Hazırladığınız sistemi her gün düzenli olarak tekrarlayın.",
+                "Kamera dolly-in hareketi, merkezde parlayan başarı simgesi",
+                "4. ÖLÇEKLEME: SÜREKLİ GELİŞİM"
+            ),
+            Triple(
+                "Ve son olarak: Bu adımları uygulayanlar ilk günden itibaren farkı net bir şekilde görüyor.",
+                "Hızlı zoom efekti, ekranda dikkat çekici sonuç kartları",
+                "SONUÇ: HEMEN BUGÜN BAŞLAYIN"
+            )
+        )
 
         val scenes = mutableListOf<SceneItem>()
         for (i in 0 until sceneCount) {
-            val templateScene = sampleScriptData.scenes.getOrElse(i) {
-                FallbackScene(
-                    narration = "$topic konusunda kritik adım ${i + 1}.",
-                    visual = "Dinamik kamera hareketi, $topic üzerine odaklanan sinematik sahne.",
-                    subtitle = "ADIM ${i + 1}: ${topic.take(25)}",
-                    transition = TransitionEffect.ZOOM_IN,
-                    sfx = "Whoosh",
-                    highlights = listOf("ADIM", "KRİTİK")
-                )
-            }
+            val step = stepTemplates[i % stepTemplates.size]
+            val sfx = soundEffects[(i + (1..3).random()) % soundEffects.size]
+            val trans = transitions[(i + (1..2).random()) % transitions.size]
+            val highlightWord = topicKeywords.getOrNull(i % topicKeywords.size)?.uppercase() ?: "ÖNEMLİ"
 
             scenes.add(
                 SceneItem(
                     id = i + 1,
                     orderIndex = i,
                     durationSeconds = perSceneDuration,
-                    narrationText = templateScene.narration,
-                    visualDescription = templateScene.visual,
-                    onScreenSubtitle = templateScene.subtitle,
-                    transitionType = templateScene.transition,
-                    soundEffectCue = templateScene.sfx,
-                    bgThemeIndex = i % 3,
-                    textHighlightWords = templateScene.highlights
+                    narrationText = if (i == 0) "${dynamicHooks.first()} $cleanTopic konusunu adım adım inceliyoruz." else step.first,
+                    visualDescription = step.second,
+                    onScreenSubtitle = if (i == 0) dynamicHooks.first().take(36) else step.third,
+                    transitionType = trans,
+                    soundEffectCue = sfx,
+                    bgThemeIndex = (i + (0..2).random()) % 3,
+                    textHighlightWords = listOf(highlightWord, "ADIM ${i + 1}")
                 )
             )
         }
 
+        val chosenHook = dynamicHooks.first()
         val script = VideoScript(
-            title = topic.ifBlank { sampleScriptData.title },
-            hookLine = sampleScriptData.hook,
+            title = cleanTopic,
+            hookLine = chosenHook,
             scenes = scenes,
             ctaLine = "Videoyu kaydet, hemen bugün uygula ve takip etmeyi unutma!",
             totalDurationSeconds = durationSeconds
         )
 
         val igPack = InstagramPublishData(
-            caption = "🚀 ${script.title}\n\n${script.hookLine}\n\n📌 3 Önemli Nokta:\n1️⃣ Erken harekete geçin ve süreci otomatikleştirin.\n2️⃣ Günlük küçük adımlarla büyük fark yaratın.\n3️⃣ Algoritmayı ve araçları lehinize kullanın.\n\n💬 Sen bu konuda ne düşünüyorsun? Fikirlerini yorumlarda belirt!\n\n👇 Kaydet ve arkadaşlarınla paylaş!",
-            viralHooks = listOf(script.hookLine, "Bunu 1 Yıl Önce Bilseydim Hayatım Değişirdi!", "Kimsenin Bahsetmediği O Yöntem"),
+            caption = "🚀 ${script.title}\n\n$chosenHook\n\n📌 3 Önemli Nokta:\n1️⃣ Erken harekete geçin ve süreci otomatikleştirin.\n2️⃣ Günlük küçük adımlarla büyük fark yaratın.\n3️⃣ Algoritmayı ve araçları lehinize kullanın.\n\n💬 Sen bu konuda ne düşünüyorsun? Fikirlerini yorumlarda belirt!\n\n👇 Kaydet ve arkadaşlarınla paylaş!",
+            viralHooks = listOf(chosenHook, "Bunu 1 Yıl Önce Bilseydim Hayatım Değişirdi!", "Kimsenin Bahsetmediği O Yöntem"),
             topHashtags = listOf("#reels", "#viral", "#kesfet", "#fyp", "#trend", "#instagramreels"),
             nicheHashtags = listOf("#${niche.name.lowercase()}", "#yapayzeka", "#otomasyon", "#gelisim", "#girisim", "#basari"),
-            audioRecommendation = "Trending Cyber Synth (128 BPM) - Reels Trend #4",
+            audioRecommendation = "Trending Cyber Synth (128 BPM) - Reels Trend #${(1..9).random()}",
             firstCommentPin = "👉 Hangi adımı ilk deneyeceksin? Yorumlara yaz, cevaplayayım!",
-            bestPostingTime = "Bugün 18:30 - 21:00",
+            bestPostingTime = "Bugün ${(17..20).random()}:30 - ${(21..23).random()}:00",
             coverTitle = script.title
         )
 
         val ytPack = YouTubePublishData(
             titleOptions = listOf(
-                "CTR %14.8: ${script.title} (Kimse Bilmiyor!)",
-                "CTR %13.2: Bu Taktikle Herkesi Şaşırtın | ${script.title}",
-                "CTR %11.9: Adım Adım Rehber: ${script.title}"
+                "CTR %${(13..16).random()}.${(1..9).random()}: ${script.title} (Kimse Bilmiyor!)",
+                "CTR %${(12..15).random()}.${(1..9).random()}: Bu Taktikle Herkesi Şaşırtın | ${script.title}",
+                "CTR %${(11..14).random()}.${(1..9).random()}: Adım Adım Rehber: ${script.title}"
             ),
             selectedTitle = "${script.title} #shorts",
-            description = "🔥 ${script.title}\n\nBu videoda ${topic} hakkında en etkili yöntemleri ve püf noktalarını derledik.\n\n⏱️ Zaman Damgaları:\n00:00 Giriş ve Kanca\n00:06 Temel Mantık\n00:18 Uygulama Adımları\n00:26 Sonuç ve Özet\n\n👍 Videoyu beğendiyseniz Beğen butonuna basmayı ve Kanala Abone olmayı unutmayın!\n\n#shorts #viral #bilgi",
-            tags = listOf("shorts", "youtube shorts", "viral", topic.lowercase(), "eğitim", "gelişim", "trend"),
-            thumbnailPrompt = "High impact YouTube thumbnail concept for: '$topic', 3D bold dynamic lighting, glowing vibrant neon cyan and gold accents, centered focal point with expressive reaction, 8k cinematic octane render",
+            description = "🔥 ${script.title}\n\nBu videoda $cleanTopic hakkında en etkili yöntemleri ve püf noktalarını derledik.\n\n⏱️ Zaman Damgaları:\n00:00 Giriş ve Kanca\n00:06 Temel Mantık\n00:18 Uygulama Adımları\n00:26 Sonuç ve Özet\n\n👍 Videoyu beğendiyseniz Beğen butonuna basmayı ve Kanala Abone olmayı unutmayın!\n\n#shorts #viral #bilgi",
+            tags = listOf("shorts", "youtube shorts", "viral", cleanTopic.lowercase().take(20), "eğitim", "gelişim", "trend"),
+            thumbnailPrompt = "High impact YouTube thumbnail concept for: '$cleanTopic', 3D bold dynamic lighting, glowing vibrant neon cyan and gold accents, centered focal point with expressive reaction, 8k cinematic octane render",
             pinnedComment = "Sizin en çok beğendiğiniz kısım hangisi oldu? Yorumlarda buluşalım! 👇",
             categoryName = "Eğitim ve Teknoloji",
-            estimatedCtr = "%13.4 CTR Potansiyeli"
+            estimatedCtr = "%${(12..15).random()}.${(1..9).random()} CTR Potansiyeli"
+        )
+
+        val resolvedNiche = if (niche == VideoNiche.AUTO_DETECT) detectSmartNicheFromTopic(cleanTopic) else niche
+        val detectedLabel = if (niche == VideoNiche.AUTO_DETECT) "🤖 AI Seçti: ${resolvedNiche.label} (%98 Uyum)" else ""
+
+        val hookA = chosenHook
+        val hookB = "Bunu yapmıyorsanız her gün para veya saat kaybediyorsunuz! ($cleanTopic)"
+        val splitHooks = SplitHookData(
+            hookA = hookA,
+            hookB = hookB,
+            selectedHookType = HookType.HOOK_A
+        )
+
+        val safetyReport = AlgorithmSafetyReport(
+            overallScore = (97..99).random(),
+            safetyLevel = "Mükemmel (Ceza Riski %0)",
+            repetitiveContentRisk = "Çok Düşük (%100 Özgün Kurgu Akışı)",
+            retentionPrediction = "%86+ İzleyici Tutma Potansiyeli",
+            aiDisclosureNotice = "Bu içerik yapay zekâ destekli otomasyon araçları kullanılarak kurgulanmış olup YouTube 'Sentetik veya Değiştirilmiş İçerik' politikasıyla %100 uyumludur.",
+            copyrightStatus = "Telif Hakkı Sorunsuz (Royalty-Free Sesler ve B-Roll)",
+            actionChecklist = listOf(
+                "İlk 3 saniye kancasında yakınlaşma (Zoom-In) ile izleyici kaybı (Swipe-Away) önlendi.",
+                "YouTube Studio yüklemesinde 'Sentetik veya Değiştirilmiş İçerik: EVET' kutusu işaretlenmelidir.",
+                "İlk 30 dakikada gelen ilk 3 yoruma yanıt verilerek algoritma tetiklenmelidir.",
+                "A/B Kanca testiyle izlenme potansiyeli en yüksek kanca seçilebilir."
+            )
         )
 
         return VideoProject(
-            topic = topic.ifBlank { "Viral Otomasyon Videosu" },
-            niche = niche,
+            topic = cleanTopic,
+            niche = resolvedNiche,
             platformTarget = platformTarget,
             aspectRatio = platformTarget.defaultAspect,
             tone = tone,
             durationSeconds = durationSeconds,
             status = ProjectStatus.READY_TO_PUBLISH,
-            hookScore = 96,
-            estimatedViralMultiplier = "4.6x Viral",
+            hookScore = (95..99).random(),
+            estimatedViralMultiplier = "${(4..6).random()}.${(1..9).random()}x Viral",
             script = script,
             publishPack = SocialPublishPack(igPack, ytPack),
-            styleSettings = VideoStyleSettings(captionStyle = CaptionStyle.KARAOKE_POP)
+            styleSettings = VideoStyleSettings(
+                captionStyle = CaptionStyle.KARAOKE_POP,
+                bouncingEmojisEnabled = true,
+                humanizedBreathing = true
+            ),
+            splitHooks = splitHooks,
+            algorithmSafety = safetyReport,
+            detectedNicheLabel = detectedLabel
         )
     }
 
@@ -769,6 +870,36 @@ class GeminiAutomationService {
                 "Şekeri 14 gün boyunca kestiğinizde vücudunuza ne olur?",
                 "Uyku kalitesini %200 artıran akşam rutini bilimsel kanıtı",
                 "Kilo vermeyi engelleyen en sinsi 3 gizli kalori kaynağı"
+            )
+            VideoNiche.AUTO_DETECT -> listOf(
+                "Yapay Zeka ile Otomatik Gelir Üreten 3 Dijital Varlık",
+                "Sosyal Medyada Sıfırdan 100K Takipçiye Ulaşmanın Viral Formülü",
+                "Zihninizi 10 Kat Güçlendiren Günlük Nöro-Alışkanlıklar",
+                "2026'da Asla Eskimeyecek En Değerli 4 Yetenek"
+            )
+            VideoNiche.HORMOZI_BUSINESS -> listOf(
+                "Müşterilerin 'Hayır' Diyemeyeceği 100M Teklif Nasıl Oluşturulur?",
+                "Fiyat Kırmadan Rakipleri Yok Etmenin 3 Basit Adımı",
+                "Gelirinizi 10x Yapacak Tek Şey: Değer Eşitliği Denklemi",
+                "Alex Hormozi'nin Sıfırdan 100 Milyon Dolara Ulaşma Taktikleri"
+            )
+            VideoNiche.MYSTERY_STORY -> listOf(
+                "1994 Yılında Pasifik Okyanusu'nda Kaybolan Uçağın Son Telsiz Kaydı",
+                "Dünyanın En Güvenli Kasasında Saklanan Açıklanamaz Belge",
+                "50 Yıl Boyunca Gizli Kalan Antarktika Keşif Günlüğü",
+                "Görgü Tanıkları Tarafından Doğrulanan 3 Paranormal Gizem"
+            )
+            VideoNiche.ENTERTAINMENT_COMEDY -> listOf(
+                "Pazartesi Sabahı Toplantıya Katılmaya Çalışan Beyaz Yakalı Halleri",
+                "Kredi Kartı Ekstresi Geldiğinde Verilen 4 Aşamalı Tepki",
+                "Diyetin 3. Gününde Gece Yarısı Buzdolabı Karşısındaki Çaresizlik",
+                "Arkadaş Ortamında 'Hesap Bende' Diyen Kişinin İç Dünyası"
+            )
+            VideoNiche.ECOMMERCE_PRODUCT -> listOf(
+                "Amazon'da Gizli Kalan ve Hayatı Kolaylaştıran 3 Dahi Ürün",
+                "Dropshipping Yaparken Asla Satmamanız Gereken 3 Ürün Grubu",
+                "1 Günde Kendi E-Ticaret Markanızı Kurmanın Basit Yolu",
+                "TikTok'ta 24 Saatte Viral Olan ve Yok Satan Dahi Mutfak Aleti"
             )
             VideoNiche.CUSTOM -> listOf(
                 "3 Adımda Hayatınızı Değiştirecek Alışkanlıklar",

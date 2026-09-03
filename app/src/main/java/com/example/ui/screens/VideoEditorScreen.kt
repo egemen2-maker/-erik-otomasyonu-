@@ -26,14 +26,19 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FormatPaint
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Publish
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -45,6 +50,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -62,13 +69,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import com.example.model.CaptionStyle
+import com.example.model.HookType
 import com.example.model.SceneItem
 import com.example.model.SubtitlePosition
 import com.example.model.TransitionEffect
@@ -106,8 +118,10 @@ fun VideoEditorScreen(
     val sceneProgress by viewModel.sceneProgress.collectAsState()
     val totalProgressSeconds by viewModel.totalProgressSeconds.collectAsState()
 
-    var selectedEditorTab by remember { mutableIntStateOf(0) } // 0: Altyazı & Stil, 1: Sahne Kurgusu, 2: Ses & Müzik
+    var selectedEditorTab by remember { mutableIntStateOf(0) } // 0: Altyazı & Kanca, 1: Algoritma Kalkanı, 2: Sahneler, 3: Ses & TTS
     var editingSceneIndex by remember { mutableStateOf<Int?>(null) }
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     val project = activeProject
     if (project == null) {
@@ -215,20 +229,26 @@ fun VideoEditorScreen(
                 Tab(
                     selected = selectedEditorTab == 0,
                     onClick = { selectedEditorTab = 0 },
-                    text = { Text("Altyazı Stili", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                    text = { Text("Altyazı & Kanca", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                     icon = { Icon(Icons.Default.Subtitles, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 )
                 Tab(
                     selected = selectedEditorTab == 1,
                     onClick = { selectedEditorTab = 1 },
-                    text = { Text("Sahneler (${project.script.scenes.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                    icon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    text = { Text("Algoritma", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 )
                 Tab(
                     selected = selectedEditorTab == 2,
                     onClick = { selectedEditorTab = 2 },
-                    text = { Text("Ses & Efekt", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                    icon = { Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    text = { Text("Sahneler (${project.script.scenes.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+                Tab(
+                    selected = selectedEditorTab == 3,
+                    onClick = { selectedEditorTab = 3 },
+                    text = { Text("Ses & TTS", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Default.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 )
             }
         }
@@ -316,13 +336,386 @@ fun VideoEditorScreen(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // MrBeast Bouncing Emojis Toggle
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(StudioSurfaceVariant, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "⚡ Zıplayan Emojiler (MrBeast Modu)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Kelimelere göre dinamik 💰, 🔥, 🧠, 🎯 emojileri ekler ve zıplatır.",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = project.styleSettings.bouncingEmojisEnabled,
+                                onCheckedChange = { viewModel.toggleBouncingEmojis() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = StudioPrimary,
+                                    uncheckedThumbColor = TextSecondary,
+                                    uncheckedTrackColor = StudioBorder
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Tab 0 Sub-Item: A/B Hook Testing Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = StudioSurfaceElevated),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, StudioPrimary.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CompareArrows,
+                                    contentDescription = null,
+                                    tint = StudioPrimaryLight,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "A/B Viral Kanca (Hook) Testi",
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = StudioPrimary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "Aktif: Kanca ${project.splitHooks.activeHook.name}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StudioPrimaryLight,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Videonuzun ilk 3 saniyesini iki farklı psikolojik açıyla test edin. Seçtiğiniz kanca ilk sahneye ve video başlığına anında entegre edilir.",
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            lineHeight = 15.sp
+                        )
+
+                        // Hook Option A: Curiosity / Mystery
+                        val isHookA = project.splitHooks.activeHook == HookType.A
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.switchHookType(HookType.A)
+                                    Toast.makeText(context, "Kanca A (Merak Açısı) seçildi!", Toast.LENGTH_SHORT).show()
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isHookA) StudioPrimary.copy(alpha = 0.15f) else StudioSurface,
+                            border = androidx.compose.foundation.BorderStroke(
+                                if (isHookA) 1.5.dp else 1.dp,
+                                if (isHookA) StudioPrimary else StudioBorder
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Kanca A (Merak & Gizem)",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (isHookA) StudioPrimaryLight else TextPrimary
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = SuccessGreen.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = project.splitHooks.hookARetentionRate,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SuccessGreen,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "\"${project.splitHooks.hookA}\"",
+                                    fontSize = 12.sp,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        // Hook Option B: FOMO / Urgency
+                        val isHookB = project.splitHooks.activeHook == HookType.B
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.switchHookType(HookType.B)
+                                    Toast.makeText(context, "Kanca B (FOMO / Aciliyet) seçildi!", Toast.LENGTH_SHORT).show()
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isHookB) StudioSecondary.copy(alpha = 0.15f) else StudioSurface,
+                            border = androidx.compose.foundation.BorderStroke(
+                                if (isHookB) 1.5.dp else 1.dp,
+                                if (isHookB) StudioSecondary else StudioBorder
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Kanca B (FOMO & Kayıp Korkusu)",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (isHookB) StudioSecondaryLight else TextPrimary
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = SubtitleHighlightYellow.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = project.splitHooks.hookBRetentionRate,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SubtitleHighlightYellow,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "\"${project.splitHooks.hookB}\"",
+                                    fontSize = 12.sp,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Tab Content: 1. Sahne Kurgusu Listesi
+        // Tab Content: 1. Algoritma Ceza Kalkanı Raporu
         if (selectedEditorTab == 1) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = StudioSurfaceElevated),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Header Score Banner
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Algoritma Ceza Kalkanı",
+                                    color = TextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "YouTube & Meta Yapay Zeka Politikası Uyumu",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = SuccessGreen.copy(alpha = 0.18f),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, SuccessGreen)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "%${project.algorithmSafety.safetyScore}",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = SuccessGreen
+                                    )
+                                    Text(
+                                        text = "GÜVENLİK",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SuccessGreen
+                                    )
+                                }
+                            }
+                        }
+
+                        // Badges Row
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            for (badge in project.algorithmSafety.complianceBadges) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = StudioSurfaceVariant,
+                                    border = androidx.compose.foundation.BorderStroke(0.5.dp, StudioBorder)
+                                ) {
+                                    Text(
+                                        text = "✓ $badge",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPrimary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Summary Statistics Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                color = StudioSurface
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(text = "CEZA RİSKİ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                                    Text(text = project.algorithmSafety.penaltyRiskLevel, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SuccessGreen)
+                                }
+                            }
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                color = StudioSurface
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(text = "İZLEYİCİ TUTMA", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                                    Text(text = project.algorithmSafety.retentionPrediction, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StudioPrimaryLight)
+                                }
+                            }
+                        }
+
+                        // YouTube Studio Synthetic Declaration Copy Box
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = StudioSurface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, StudioBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "YouTube Studio Bildirim Metni",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = TextPrimary
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(project.algorithmSafety.youtubeSyntheticDeclaration))
+                                            Toast.makeText(context, "Bildirim metni kopyalandı!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "Kopyala",
+                                            tint = StudioPrimary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = project.algorithmSafety.youtubeSyntheticDeclaration,
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+
+                        // Safety Tips Checklist
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Önerilen Algoritma Stratejisi:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            for (tip in project.algorithmSafety.safetyTips) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(text = "🛡️", fontSize = 11.sp)
+                                    Text(
+                                        text = tip,
+                                        fontSize = 11.sp,
+                                        color = TextSecondary,
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Tab Content: 2. Sahne Kurgusu Listesi
+        if (selectedEditorTab == 2) {
             itemsIndexed(project.script.scenes) { index, scene ->
                 val isCurrent = index == currentSceneIndex
                 Card(
@@ -470,8 +863,8 @@ fun VideoEditorScreen(
             }
         }
 
-        // Tab Content: 2. Ses & Müzik
-        if (selectedEditorTab == 2) {
+        // Tab Content: 3. Ses & Müzik (İnsansı TTS)
+        if (selectedEditorTab == 3) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -481,14 +874,48 @@ fun VideoEditorScreen(
                 ) {
                     Column(
                         modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Seslendirme & Arka Plan Müziği",
+                            text = "Seslendirme & İnsansı Konuşma (TTS)",
                             color = TextPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
+
+                        // Humanized Breathing & Tone Modulation Switch
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(StudioSurfaceVariant, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "🗣️ İnsansı Nefes & Ritmik Tonlama",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Robotik sesi kırar; soru ve maddelerde insansı mikro-pause'lar ekler.",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = project.styleSettings.humanizedBreathing,
+                                onCheckedChange = { viewModel.toggleHumanizedBreathing() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = StudioSecondary,
+                                    uncheckedThumbColor = TextSecondary,
+                                    uncheckedTrackColor = StudioBorder
+                                )
+                            )
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
