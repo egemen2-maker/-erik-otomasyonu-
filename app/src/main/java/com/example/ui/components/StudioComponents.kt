@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +44,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
@@ -102,8 +104,10 @@ import com.example.model.SceneItem
 import com.example.model.SubtitlePosition
 import com.example.model.TransitionEffect
 import com.example.model.VideoAspectRatio
+import com.example.model.VideoNiche
 import com.example.model.VideoProject
 import com.example.model.VideoStyleSettings
+import com.example.model.VideoVisualLayout
 import com.example.ui.theme.InstagramPink
 import com.example.ui.theme.InstagramPurple
 import com.example.ui.theme.StudioBackground
@@ -140,12 +144,7 @@ fun VideoPlayerCanvas(
     val currentScene = project.script.scenes.getOrNull(currentSceneIndex)
         ?: project.script.scenes.firstOrNull()
 
-    val sceneBackgroundRes = when ((currentScene?.bgThemeIndex ?: 0) % 3) {
-        0 -> R.drawable.scene_cyberpunk_tech
-        1 -> R.drawable.scene_luxury_motivation
-        2 -> R.drawable.scene_space_nebula
-        else -> R.drawable.scene_cyberpunk_tech
-    }
+    val sceneBackgroundRes = resolveSceneVisual(project, currentSceneIndex)
 
     // Dynamic camera scale / transition animation
     val infiniteTransition = rememberInfiniteTransition(label = "camera")
@@ -187,36 +186,386 @@ fun VideoPlayerCanvas(
                 .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            // Background Visual Layer
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = pulseScale * transitionScale
-                        scaleY = pulseScale * transitionScale
-                    }
-            ) {
-                Image(
-                    painter = painterResource(id = sceneBackgroundRes),
-                    contentDescription = currentScene?.visualDescription ?: "Scene background",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+            // Dynamic Visual Layout Engine (Supports Split-Screen, Podcast, Listicle, Headline & Cinematic)
+            val currentLayout = project.styleSettings.visualLayout
 
-                // Dark vignette gradient overlay for crisp subtitle contrast
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.5f),
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.75f)
-                                )
+            when (currentLayout) {
+                VideoVisualLayout.SPLIT_SCREEN_GAMING -> {
+                    // Split Screen: Top 50% Narrative Visual, Glowing Neon Divider, Bottom 50% Satisfying Kinetic Motion Grid
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Top Half: Narrative Scene Visual
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    scaleX = pulseScale * transitionScale
+                                    scaleY = pulseScale * transitionScale
+                                }
+                        ) {
+                            Image(
+                                painter = painterResource(id = sceneBackgroundRes),
+                                contentDescription = currentScene?.visualDescription ?: "Scene visual",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
                             )
+                            // Top overlay badge
+                            Surface(
+                                shape = RoundedCornerShape(bottomEnd = 8.dp),
+                                color = Color.Black.copy(alpha = 0.7f),
+                                modifier = Modifier.align(Alignment.TopStart)
+                            ) {
+                                Text(
+                                    text = "🎬 SAHNE GÖRSELİ",
+                                    color = StudioPrimaryLight,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        // Neon Glowing Divider Line
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(2.5.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(StudioPrimary, StudioSecondary, StudioTertiary)
+                                    )
+                                )
                         )
-                )
+
+                        // Bottom Half: Satisfying Kinetic Cyberpunk / Gameplay Runner Canvas
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .background(Color(0xFF070913))
+                        ) {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                                val w = size.width
+                                val h = size.height
+                                val p = currentSceneProgress
+
+                                val vanishingX = w * 0.5f
+                                val vanishingY = 0f
+
+                                for (lane in -3..3) {
+                                    val startX = vanishingX + (lane * (w * 0.12f))
+                                    val endX = vanishingX + (lane * (w * 0.45f))
+                                    drawLine(
+                                        color = StudioSecondary.copy(alpha = 0.35f),
+                                        start = androidx.compose.ui.geometry.Offset(startX, vanishingY),
+                                        end = androidx.compose.ui.geometry.Offset(endX, h),
+                                        strokeWidth = 1.5.dp.toPx()
+                                    )
+                                }
+
+                                for (step in 0..7) {
+                                    val progressOffset = ((step / 7f) + (p * 1.5f)) % 1f
+                                    val barY = progressOffset * progressOffset * h
+                                    val alpha = (progressOffset * 0.6f).coerceIn(0.1f, 0.7f)
+                                    val halfWidth = (progressOffset * w * 0.55f)
+
+                                    drawLine(
+                                        color = StudioPrimaryLight.copy(alpha = alpha),
+                                        start = androidx.compose.ui.geometry.Offset(vanishingX - halfWidth, barY),
+                                        end = androidx.compose.ui.geometry.Offset(vanishingX + halfWidth, barY),
+                                        strokeWidth = (2.dp.toPx() * (1f + progressOffset))
+                                    )
+                                }
+
+                                val ballY = h * 0.72f + (sin(p * 18.0).toFloat() * 8.dp.toPx())
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(StudioSecondaryLight, StudioSecondary, Color.Transparent)
+                                    ),
+                                    radius = 16.dp.toPx(),
+                                    center = androidx.compose.ui.geometry.Offset(w * 0.5f, ballY)
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(bottomStart = 8.dp),
+                                color = Color.Black.copy(alpha = 0.7f),
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Text(
+                                    text = "🎮 TATMİN EDİCİ AKIŞ (SPLIT)",
+                                    color = StudioSecondaryLight,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                VideoVisualLayout.PODCAST_INTERVIEW -> {
+                    // Podcast Studio: Moody dark atmosphere with dual speakers & mic indicator
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0B0D14))) {
+                        Image(
+                            painter = painterResource(id = sceneBackgroundRes),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.3f,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Dual Speakers Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.Center)
+                                .padding(horizontal = 24.dp)
+                                .offset(y = (-40).dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val isSpeaker1 = (currentSceneIndex % 2 == 0)
+
+                            // Speaker 1
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSpeaker1) StudioPrimary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.1f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        if (isSpeaker1) 2.5.dp else 1.dp,
+                                        if (isSpeaker1) StudioPrimaryLight else Color.Gray.copy(alpha = 0.4f)
+                                    ),
+                                    modifier = Modifier.size(64.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("🎙️", fontSize = 26.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isSpeaker1) StudioPrimary else Color(0x30FFFFFF)
+                                ) {
+                                    Text(
+                                        text = if (isSpeaker1) "● KONUŞUYOR" else "Moderatör",
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            AnimatedAudioWaveform(isPlaying = isPlaying)
+
+                            // Speaker 2
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (!isSpeaker1) StudioSecondary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.1f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        if (!isSpeaker1) 2.5.dp else 1.dp,
+                                        if (!isSpeaker1) StudioSecondaryLight else Color.Gray.copy(alpha = 0.4f)
+                                    ),
+                                    modifier = Modifier.size(64.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("🎧", fontSize = 26.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (!isSpeaker1) StudioSecondary else Color(0x30FFFFFF)
+                                ) {
+                                    Text(
+                                        text = if (!isSpeaker1) "● KONUŞUYOR" else "Konuk Uzman",
+                                        color = if (!isSpeaker1) Color.Black else Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                VideoVisualLayout.COUNTDOWN_LISTICLE -> {
+                    // Countdown Listicle: Step Header, Number Badge, Progress Fill
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            painter = painterResource(id = sceneBackgroundRes),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().graphicsLayer {
+                                scaleX = pulseScale
+                                scaleY = pulseScale
+                            }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.85f))))
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .padding(top = 54.dp, start = 18.dp, end = 18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = StudioTertiary,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = "#0${currentSceneIndex + 1}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "KRİTİK ADIM 0${currentSceneIndex + 1} / 0${project.script.scenes.size}",
+                                    color = StudioSecondaryLight,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                val totalScenes = project.script.scenes.size.coerceAtLeast(1)
+                                val overallProgress = ((currentSceneIndex.toFloat() + currentSceneProgress) / totalScenes).coerceIn(0f, 1f)
+                                LinearProgressIndicator(
+                                    progress = { overallProgress },
+                                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                    color = StudioSecondary,
+                                    trackColor = Color(0x33FFFFFF)
+                                )
+                            }
+                        }
+                    }
+                }
+                VideoVisualLayout.HEADLINE_QUOTE_CARD -> {
+                    // Minimalist Quote Card: Top Hook Headline Card with Quote Marks
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0E1118))) {
+                        Image(
+                            painter = painterResource(id = sceneBackgroundRes),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.4f,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .padding(top = 50.dp, start = 16.dp, end = 16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0x35FFFFFF),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x50FFFFFF))
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text("📌", fontSize = 13.sp)
+                                    Text(
+                                        text = project.detectedNicheLabel.ifBlank { project.niche.label }.uppercase(),
+                                        color = StudioPrimaryLight,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "“${project.script.hookLine}”",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    lineHeight = 17.sp
+                                )
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    // Fullscreen Dynamic Cinematic (Default)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = pulseScale * transitionScale
+                                scaleY = pulseScale * transitionScale
+                            }
+                    ) {
+                        Image(
+                            painter = painterResource(id = sceneBackgroundRes),
+                            contentDescription = currentScene?.visualDescription ?: "Scene background",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Dynamic Procedural Motion Layer (Animated particles & cinematic light glow)
+                        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                            val width = size.width
+                            val height = size.height
+
+                            for (i in 0 until 12) {
+                                val seed = (i * 73) % 100 / 100f
+                                val px = ((seed + currentSceneProgress * (0.08f + i * 0.015f)) % 1.0f) * width
+                                val py = ((1.0f - (currentSceneProgress * 0.25f + seed)) % 1.0f) * height
+                                val r = 2.dp.toPx() * (1f + (i % 2))
+                                val alpha = (0.25f + (sin(currentSceneProgress * 6.28f + i).toFloat() * 0.15f)).coerceIn(0.08f, 0.5f)
+
+                                drawCircle(
+                                    color = Color.White.copy(alpha = alpha),
+                                    radius = r,
+                                    center = androidx.compose.ui.geometry.Offset(px, py)
+                                )
+                            }
+
+                            if (isPlaying) {
+                                val streakProgress = (currentSceneProgress * 1.4f) % 1.2f
+                                drawLine(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color(0x3300F2FE),
+                                            Color(0x55FFFFFF),
+                                            Color(0x337C5CFC),
+                                            Color.Transparent
+                                        ),
+                                        startX = (streakProgress - 0.35f) * width,
+                                        endX = (streakProgress + 0.35f) * width
+                                    ),
+                                    start = androidx.compose.ui.geometry.Offset(0f, height * 0.32f),
+                                    end = androidx.compose.ui.geometry.Offset(width, height * 0.35f),
+                                    strokeWidth = 2.5.dp.toPx()
+                                )
+                            }
+                        }
+
+                        // Dark vignette gradient overlay for crisp subtitle contrast
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = 0.5f),
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = 0.75f)
+                                        )
+                                    )
+                                )
+                        )
+                    }
+                }
             }
 
             // Top Status Bar: Viral Score & Timecode
@@ -1033,3 +1382,80 @@ fun ExportSimulationModal(
         }
     }
 }
+
+/**
+ * Resolves a dynamic, theme-specific background resource for the scene.
+ * Ensures the video never looks like a single repeated room, dynamically matching
+ * finance, technology, mystery, business, space, or luxury visuals.
+ */
+fun resolveSceneVisual(project: VideoProject, sceneIndex: Int): Int {
+    val scene = project.script.scenes.getOrNull(sceneIndex)
+    val text = (scene?.narrationText.orEmpty() + " " + scene?.visualDescription.orEmpty() + " " + project.topic).lowercase()
+
+    return when {
+        // Finance / Money / Crypto / Passive Income
+        text.contains("para") || text.contains("gelir") || text.contains("kripto") ||
+        text.contains("finans") || text.contains("dolar") || text.contains("kazanç") ||
+        text.contains("milyon") || text.contains("yatırım") || text.contains("hisse") ||
+        project.niche == VideoNiche.CRYPTO_FINANCE -> {
+            when (sceneIndex % 3) {
+                0 -> R.drawable.img_scene_finance
+                1 -> R.drawable.img_scene_business
+                else -> R.drawable.scene_cyberpunk_tech
+            }
+        }
+        // Mystery / Story / Dark / Thriller
+        text.contains("gizem") || text.contains("sır") || text.contains("korku") ||
+        text.contains("gece") || text.contains("bilinmeyen") || text.contains("tarih") ||
+        project.niche == VideoNiche.MYSTERY_STORY -> {
+            when (sceneIndex % 3) {
+                0 -> R.drawable.img_scene_mystery
+                1 -> R.drawable.scene_space_nebula
+                else -> R.drawable.img_scene_business
+            }
+        }
+        // Business / Hormozi / Growth / Marketing
+        text.contains("iş") || text.contains("müşteri") || text.contains("şirket") ||
+        text.contains("satış") || text.contains("büyüme") || text.contains("alex") ||
+        project.niche == VideoNiche.HORMOZI_BUSINESS -> {
+            when (sceneIndex % 3) {
+                0 -> R.drawable.img_scene_business
+                1 -> R.drawable.img_scene_finance
+                else -> R.drawable.scene_luxury_motivation
+            }
+        }
+        // Space / Science / Future
+        text.contains("uzay") || text.contains("evren") || text.contains("yıldız") ||
+        text.contains("gezegen") || text.contains("bilim") ||
+        project.niche == VideoNiche.SCIENCE_SPACE -> {
+            when (sceneIndex % 3) {
+                0 -> R.drawable.scene_space_nebula
+                1 -> R.drawable.scene_cyberpunk_tech
+                else -> R.drawable.img_scene_mystery
+            }
+        }
+        // Tech / AI / Coding / Cyber
+        text.contains("yapay zeka") || text.contains("ai") || text.contains("robot") ||
+        text.contains("yazılım") || text.contains("teknoloji") || text.contains("kod") ||
+        project.niche == VideoNiche.TECH_AI -> {
+            when (sceneIndex % 3) {
+                0 -> R.drawable.scene_cyberpunk_tech
+                1 -> R.drawable.img_scene_finance
+                else -> R.drawable.scene_space_nebula
+            }
+        }
+        // Default / Variety across all 6 rich visual sets
+        else -> {
+            val visualSets = listOf(
+                R.drawable.img_scene_business,
+                R.drawable.img_scene_finance,
+                R.drawable.scene_cyberpunk_tech,
+                R.drawable.img_scene_mystery,
+                R.drawable.scene_space_nebula,
+                R.drawable.scene_luxury_motivation
+            )
+            visualSets[(sceneIndex + (scene?.bgThemeIndex ?: 0)) % visualSets.size]
+        }
+    }
+}
+

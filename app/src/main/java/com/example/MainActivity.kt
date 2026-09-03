@@ -20,17 +20,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.RocketLaunch
 import androidx.compose.material3.AlertDialog
@@ -62,6 +67,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.ui.screens.ApiHelpGuideScreen
+import com.example.ui.screens.ProfileStudioScreen
 import com.example.ui.screens.ProjectLibraryScreen
 import com.example.ui.screens.PublishPackageScreen
 import com.example.ui.screens.StudioCreateScreen
@@ -81,6 +90,10 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.viewmodel.VideoAutomationViewModel
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+
 class MainActivity : ComponentActivity() {
 
     private val viewModel: VideoAutomationViewModel by viewModels()
@@ -94,6 +107,7 @@ class MainActivity : ComponentActivity() {
             AutoReelTheme {
                 var selectedTabIndex by remember { mutableIntStateOf(0) }
                 var showDownloadGuide by remember { mutableStateOf(false) }
+                var showApiHelpGuide by remember { mutableStateOf(false) }
 
                 Scaffold(
                     modifier = Modifier
@@ -102,7 +116,8 @@ class MainActivity : ComponentActivity() {
                     containerColor = StudioBackground,
                     topBar = {
                         StudioTopBar(
-                            onOpenDownloadGuide = { showDownloadGuide = true }
+                            onOpenDownloadGuide = { showDownloadGuide = true },
+                            onOpenApiGuide = { showApiHelpGuide = true }
                         )
                     },
                     bottomBar = {
@@ -124,15 +139,18 @@ class MainActivity : ComponentActivity() {
                             )
                             1 -> VideoEditorScreen(
                                 viewModel = viewModel,
-                                onNavigateToPublish = { selectedTabIndex = 2 }
+                                onNavigateToPublish = { selectedTabIndex = 3 }
                             )
-                            2 -> PublishPackageScreen(
+                            2 -> ProfileStudioScreen(
                                 viewModel = viewModel
                             )
-                            3 -> TopCommentsScreen(
+                            3 -> PublishPackageScreen(
                                 viewModel = viewModel
                             )
-                            4 -> ProjectLibraryScreen(
+                            4 -> TopCommentsScreen(
+                                viewModel = viewModel
+                            )
+                            5 -> ProjectLibraryScreen(
                                 viewModel = viewModel,
                                 onNavigateToCreate = { selectedTabIndex = 0 },
                                 onNavigateToEditor = { selectedTabIndex = 1 }
@@ -144,6 +162,48 @@ class MainActivity : ComponentActivity() {
                 if (showDownloadGuide) {
                     AppDownloadGuideDialog(onDismiss = { showDownloadGuide = false })
                 }
+
+                if (showApiHelpGuide) {
+                    Dialog(
+                        onDismissRequest = { showApiHelpGuide = false },
+                        properties = DialogProperties(usePlatformDefaultWidth = false)
+                    ) {
+                        Scaffold(
+                            modifier = Modifier.fillMaxSize(),
+                            containerColor = StudioBackground,
+                            topBar = {
+                                TopAppBar(
+                                    title = {
+                                        Text(
+                                            text = "🔑 API & Kurulum Rehberi",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        IconButton(
+                                            onClick = { showApiHelpGuide = false },
+                                            modifier = Modifier.testTag("btn_close_api_guide")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Kapat",
+                                                tint = TextPrimary
+                                            )
+                                        }
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(containerColor = StudioBackground)
+                                )
+                            }
+                        ) { paddingValues ->
+                            ApiHelpGuideScreen(
+                                viewModel = viewModel,
+                                modifier = Modifier.padding(paddingValues)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -152,7 +212,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudioTopBar(
-    onOpenDownloadGuide: () -> Unit = {}
+    onOpenDownloadGuide: () -> Unit = {},
+    onOpenApiGuide: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -165,12 +226,12 @@ fun StudioTopBar(
                     Text(
                         text = "Video Automator",
                         color = TextPrimary,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.5).sp
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp
                     )
                     Text(
-                        text = "Sistem Durumu: Aktif • AI Video & Yorum Motoru",
+                        text = "Sade & Şeffaf AI Stüdyosu",
                         color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
@@ -181,12 +242,42 @@ fun StudioTopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Download APK Guide Button
+                    // API Guide Button (Translucent Pill)
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = StudioPrimary.copy(alpha = 0.25f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, StudioPrimary.copy(alpha = 0.6f)),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable { onOpenApiGuide() }
+                            .testTag("btn_top_api_guide")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.HelpOutline,
+                                contentDescription = "API Rehberi",
+                                tint = StudioPrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "API Rehberi",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+
+                    // Download APK Guide Button (Glass pill)
                     Surface(
                         shape = CircleShape,
-                        color = StudioSurfaceElevated,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, StudioBorder),
-                        modifier = Modifier.size(38.dp)
+                        color = Color(0x20FFFFFF),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x30FFFFFF)),
+                        modifier = Modifier.size(36.dp)
                     ) {
                         IconButton(
                             onClick = onOpenDownloadGuide,
@@ -195,24 +286,8 @@ fun StudioTopBar(
                             Icon(
                                 imageVector = Icons.Filled.Download,
                                 contentDescription = "Uygulamayı İndir",
-                                tint = StudioPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    // System Active Status Icon
-                    Surface(
-                        shape = CircleShape,
-                        color = StudioPrimaryLight,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = "Sistem Durumu",
-                                tint = StudioPrimaryDark,
-                                modifier = Modifier.size(18.dp)
+                                tint = TextPrimary,
+                                modifier = Modifier.size(17.dp)
                             )
                         }
                     }
@@ -220,7 +295,7 @@ fun StudioTopBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = StudioBackground,
+            containerColor = Color.Transparent,
             titleContentColor = TextPrimary
         )
     )
@@ -231,56 +306,67 @@ fun StudioBottomNavigation(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    NavigationBar(
-        containerColor = StudioSurfaceElevated,
-        contentColor = TextPrimary,
-        tonalElevation = 2.dp,
-        modifier = Modifier.border(
-            width = 1.dp,
-            color = StudioBorder.copy(alpha = 0.35f)
-        )
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(26.dp),
+        color = Color(0x24FFFFFF), // Translucent frosted glass
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x35FFFFFF)),
+        shadowElevation = 8.dp
     ) {
-        val navItems = listOf(
-            NavigationTabItem("1. Üret", Icons.Filled.RocketLaunch, Icons.Outlined.RocketLaunch, "tab_create"),
-            NavigationTabItem("2. Kurgu", Icons.Filled.Movie, Icons.Outlined.Movie, "tab_editor"),
-            NavigationTabItem("3. SEO", Icons.Filled.Campaign, Icons.Outlined.Campaign, "tab_publish"),
-            NavigationTabItem("4. Yorumlar", Icons.Filled.Forum, Icons.Outlined.Forum, "tab_comments"),
-            NavigationTabItem("Kütüphane", Icons.Filled.Folder, Icons.Outlined.Folder, "tab_library")
-        )
-
-        navItems.forEachIndexed { index, item ->
-            val isSelected = selectedTab == index
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onTabSelected(index) },
-                icon = {
-                    Icon(
-                        imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.label,
-                        tint = if (isSelected) StudioPrimaryDark else TextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        text = item.label,
-                        fontSize = 9.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) StudioPrimaryDark else TextSecondary
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = StudioPrimaryLight,
-                    selectedIconColor = StudioPrimaryDark,
-                    unselectedIconColor = TextSecondary,
-                    selectedTextColor = StudioPrimaryDark,
-                    unselectedTextColor = TextSecondary
-                ),
-                modifier = Modifier.testTag(item.testTag)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 5.dp, horizontal = 2.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val navItems = listOf(
+                NavigationTabItem("Üret", Icons.Filled.RocketLaunch, Icons.Outlined.RocketLaunch, "tab_create"),
+                NavigationTabItem("Kurgu", Icons.Filled.Movie, Icons.Outlined.Movie, "tab_editor"),
+                NavigationTabItem("Profil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle, "tab_profile"),
+                NavigationTabItem("SEO", Icons.Filled.Campaign, Icons.Outlined.Campaign, "tab_publish"),
+                NavigationTabItem("Yorumlar", Icons.Filled.Forum, Icons.Outlined.Forum, "tab_comments"),
+                NavigationTabItem("Kütüphane", Icons.Filled.Folder, Icons.Outlined.Folder, "tab_library")
             )
+
+            navItems.forEachIndexed { index, item ->
+                val isSelected = selectedTab == index
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isSelected) StudioPrimary.copy(alpha = 0.35f) else Color.Transparent,
+                    border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, StudioPrimary.copy(alpha = 0.7f)) else null,
+                    modifier = Modifier
+                        .testTag(item.testTag)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { onTabSelected(index) }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = item.label,
+                            tint = if (isSelected) StudioPrimary else TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = item.label,
+                            fontSize = 9.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) TextPrimary else TextSecondary
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
 
 @Composable
 fun AppDownloadGuideDialog(

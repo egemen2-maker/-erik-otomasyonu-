@@ -184,6 +184,18 @@ data class AlgorithmSafetyReport(
         )
 }
 
+enum class VideoVisualLayout(
+    val label: String,
+    val description: String,
+    val iconEmoji: String
+) {
+    DYNAMIC_CINEMATIC("Sinematik Fullscreen", "Dinamik kamera odağı, parçacık efekti & altyazı", "🎬"),
+    SPLIT_SCREEN_GAMING("Bölünmüş Ekran (Split)", "Üstte sahne görseli, altta tatmin edici hareket akışı", "📱"),
+    PODCAST_INTERVIEW("Podcast & İkili Diyalog", "2 konuşmacı dalga formu, mikrofon ve stüdyo kurgusu", "🎙️"),
+    COUNTDOWN_LISTICLE("Geri Sayım / Liste Kartı", "Adım sayaçları (1. ADIM), ilerleme çubuğu & vurgu", "🔢"),
+    HEADLINE_QUOTE_CARD("Minimalist Başlık Kartı", "Üstte büyük çarpıcı kanca kartı, altta alıntılar", "📰")
+}
+
 data class VideoStyleSettings(
     val captionStyle: CaptionStyle = CaptionStyle.KARAOKE_POP,
     val subtitlePosition: SubtitlePosition = SubtitlePosition.CENTER,
@@ -194,7 +206,8 @@ data class VideoStyleSettings(
     val showHookBanner: Boolean = true,
     val showWaveform: Boolean = true,
     val bouncingEmojisEnabled: Boolean = true,
-    val humanizedBreathing: Boolean = true
+    val humanizedBreathing: Boolean = true,
+    val visualLayout: VideoVisualLayout = VideoVisualLayout.DYNAMIC_CINEMATIC
 )
 
 data class VideoProject(
@@ -250,4 +263,22 @@ data class CommentItem(
     val timestamp: String = "10 dk önce",
     val likesCount: Int = 42
 )
+
+data class ChannelProfileData(
+    val platform: String = "Instagram", // "Instagram" or "YouTube"
+    val handle: String = "@ai.gelirleri",
+    val channelName: String = "Yapay Zeka Gelirleri",
+    val bio: String = "⚡ Günde 1 saat çalışarak pasif gelir inşa et\n🤖 En güncel AI araçları & promptları\n📈 Sıfırdan 100K takipçi yolculuğu\n👇 Ücretsiz Rehberi İndir:",
+    val websiteLink: String = "linktr.ee/aigelirleri",
+    val category: String = "Yapay Zeka & Finans",
+    val avatarPrompt: String = "3D minimalist glowing futuristic avatar icon of a neon neural brain floating over dark obsidian, octane render, 8k, sleek tech aesthetics",
+    val bannerPrompt: String = "Cinematic YouTube channel banner, 16:9 ultra-wide, dark futuristic cyber studio with glowing neon cyan typography reading 'AI REVOLUTION', high resolution",
+    val suggestedHandles: List<String> = listOf("@ai.gelirleri", "@zihin.kodlari", "@finans.yapayzeka", "@otomasyon.rehberi"),
+    val highlightTitles: List<String> = listOf("🚀 Promptlar", "💰 Gelirler", "⚡ Araçlar", "❓ SSS", "⭐ Sonuçlar"),
+    val followerCountMock: String = "48.2K",
+    val postCountMock: String = "124",
+    val subscribersMock: String = "32.4K",
+    val videosMock: String = "86"
+)
+
 

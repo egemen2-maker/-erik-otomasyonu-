@@ -1,25 +1,23 @@
 package com.example.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val HighDensityColorScheme = lightColorScheme(
+private val GlassmorphicColorScheme = darkColorScheme(
     primary = StudioPrimary,
     onPrimary = Color.White,
     primaryContainer = StudioPrimaryLight,
-    onPrimaryContainer = StudioPrimaryDark,
+    onPrimaryContainer = Color.White,
     secondary = StudioSecondary,
-    onSecondary = Color.White,
-    secondaryContainer = StudioSurfaceVariant,
-    onSecondaryContainer = Color(0xFF1D192B),
+    onSecondary = Color.Black,
+    secondaryContainer = StudioSecondaryLight,
+    onSecondaryContainer = Color.White,
     tertiary = StudioTertiary,
     onTertiary = Color.White,
     tertiaryContainer = StudioTertiaryLight,
-    onTertiaryContainer = Color(0xFF31111D),
+    onTertiaryContainer = Color.White,
     background = StudioBackground,
     onBackground = TextPrimary,
     surface = StudioSurface,
@@ -27,17 +25,18 @@ private val HighDensityColorScheme = lightColorScheme(
     surfaceVariant = StudioSurfaceElevated,
     onSurfaceVariant = TextSecondary,
     outline = StudioBorder,
-    outlineVariant = Color(0xFFE6E1E5)
+    outlineVariant = StudioBorderSubtle
 )
 
 @Composable
 fun AutoReelTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = HighDensityColorScheme,
+        colorScheme = GlassmorphicColorScheme,
         typography = Typography,
         content = content
     )
 }
+

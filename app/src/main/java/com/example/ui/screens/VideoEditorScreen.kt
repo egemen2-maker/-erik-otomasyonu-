@@ -86,6 +86,7 @@ import com.example.model.SubtitlePosition
 import com.example.model.TransitionEffect
 import com.example.model.VideoAspectRatio
 import com.example.model.VideoProject
+import com.example.model.VideoVisualLayout
 import com.example.ui.components.TimelineControls
 import com.example.ui.components.VideoPlayerCanvas
 import com.example.ui.theme.InstagramPink
@@ -266,6 +267,47 @@ fun VideoEditorScreen(
                         modifier = Modifier.padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        Text(
+                            text = "📐 Video Görsel Düzeni (Layout)",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            VideoVisualLayout.values().forEach { layout ->
+                                val isSelected = project.styleSettings.visualLayout == layout
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { viewModel.updateVisualLayout(layout) },
+                                    label = {
+                                        Text(
+                                            text = when (layout) {
+                                                VideoVisualLayout.DYNAMIC_CINEMATIC -> "🎬 Sinematik Tam Ekran"
+                                                VideoVisualLayout.SPLIT_SCREEN_GAMING -> "🎮 Bölünmüş Ekran (Split)"
+                                                VideoVisualLayout.PODCAST_INTERVIEW -> "🎙️ Podcast / İkili Sohbet"
+                                                VideoVisualLayout.COUNTDOWN_LISTICLE -> "🔢 Adım / Geri Sayım"
+                                                VideoVisualLayout.HEADLINE_QUOTE_CARD -> "📰 Manşet & Alıntı Kartı"
+                                            },
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = StudioSecondary,
+                                        selectedLabelColor = Color.Black,
+                                        containerColor = StudioSurfaceVariant,
+                                        labelColor = TextSecondary
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         Text(
                             text = "Viral Altyazı Animasyon Şablonu",
                             color = TextPrimary,

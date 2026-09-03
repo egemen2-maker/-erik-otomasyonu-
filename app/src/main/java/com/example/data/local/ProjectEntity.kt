@@ -260,6 +260,7 @@ private fun serializeStyleSettings(settings: VideoStyleSettings): String {
     obj.put("voiceSpeed", settings.voiceSpeed.toDouble())
     obj.put("showHookBanner", settings.showHookBanner)
     obj.put("showWaveform", settings.showWaveform)
+    obj.put("visualLayout", settings.visualLayout.name)
     return obj.toString()
 }
 
@@ -278,7 +279,10 @@ private fun deserializeStyleSettings(jsonStr: String): VideoStyleSettings {
             voiceType = obj.optString("voiceType", "Derin & Karizmatik"),
             voiceSpeed = obj.optDouble("voiceSpeed", 1.0).toFloat(),
             showHookBanner = obj.optBoolean("showHookBanner", true),
-            showWaveform = obj.optBoolean("showWaveform", true)
+            showWaveform = obj.optBoolean("showWaveform", true),
+            visualLayout = try {
+                com.example.model.VideoVisualLayout.valueOf(obj.optString("visualLayout", "DYNAMIC_CINEMATIC"))
+            } catch (_: Exception) { com.example.model.VideoVisualLayout.DYNAMIC_CINEMATIC }
         )
     } catch (_: Exception) {
         VideoStyleSettings()
